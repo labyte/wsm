@@ -9,11 +9,18 @@ using WSM.Core.Models;
 namespace WSM.Core.Services;
 
 /// <summary>
-/// 将 <see cref="ManagedService"/> 生成为 WinSW XML 配置。
+/// 将 <see cref="ManagedService"/> 生成为 WinSW XML 配置（兼容 WinSW 2.x）。
 /// </summary>
 public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
 {
+    private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
     public string Generate(ManagedService service)
+    {
+        return Utf8NoBom.GetString(GenerateUtf8Bytes(service));
+    }
+
+    public byte[] GenerateUtf8Bytes(ManagedService service)
     {
         if (service == null)
         {
@@ -23,14 +30,14 @@ public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
         var settings = new XmlWriterSettings
         {
             Indent = true,
-            OmitXmlDeclaration = false,
-            Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
+            // WinSW 2.x 对带 BOM 的文件可能报 Line 1 position 1 错误
+            OmitXmlDeclaration = true,
+            Encoding = Utf8NoBom
         };
 
-        using (var stream = new MemoryStream())
+        using var stream = new MemoryStream();
         using (var writer = XmlWriter.Create(stream, settings))
         {
-            writer.WriteStartDocument();
             writer.WriteStartElement("service");
 
             WriteElement(writer, "id", service.Id);
@@ -70,7 +77,8 @@ public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
 
             if (service.DelayedAutoStart && service.StartMode == ManagedServiceStartMode.Automatic)
             {
-                WriteElement(writer, "delayedAutoStart", "true");
+                writer.WriteStartElement("delayedAutoStart");
+                writer.WriteEndElement();
             }
 
             foreach (var dependency in service.Dependencies)
@@ -86,15 +94,14 @@ public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
 
             if (service.StopTimeoutSeconds > 0)
             {
-                WriteElement(writer, "stoptimeout", service.StopTimeoutSeconds.ToString(CultureInfo.InvariantCulture) + " sec");
+                WriteElement(writer, "stoptimeout", service.StopTimeoutSeconds.ToString(CultureInfo.InvariantCulture) + "sec");
             }
 
             writer.WriteEndElement();
-            writer.WriteEndDocument();
             writer.Flush();
-
-            return Encoding.UTF8.GetString(stream.ToArray());
         }
+
+        return stream.ToArray();
     }
 
     private static void WriteLogSection(XmlWriter writer, LogPolicy policy)
@@ -114,9 +121,10 @@ public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
             {
                 writer.WriteStartElement("onfailure");
                 writer.WriteAttributeString("action", MapFailureAction(action.Action));
-                if (!string.IsNullOrWhiteSpace(action.Delay))
+
+                if (ShouldWriteDelay(action))
                 {
-                    writer.WriteAttributeString("delay", action.Delay);
+                    writer.WriteAttributeString("delay", NormalizeDelay(action.Delay));
                 }
 
                 writer.WriteEndElement();
@@ -127,6 +135,28 @@ public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
         {
             WriteElement(writer, "resetfailure", policy.ResetFailurePeriod);
         }
+    }
+
+    private static bool ShouldWriteDelay(FailureActionEntry action)
+    {
+        if (action.Action == FailureActionType.None)
+        {
+            return false;
+        }
+
+        return !string.IsNullOrWhiteSpace(action.Delay)
+            && !string.Equals(action.Delay.Trim(), "0 sec", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(action.Delay.Trim(), "0sec", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeDelay(string? delay)
+    {
+        if (string.IsNullOrWhiteSpace(delay))
+        {
+            return "0 sec";
+        }
+
+        return delay!.Trim();
     }
 
     private static void WriteElement(XmlWriter writer, string name, string value)
@@ -143,7 +173,7 @@ public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
             case ManagedServiceStartMode.Manual:
                 return "Manual";
             case ManagedServiceStartMode.Disabled:
-                return "Disabled";
+                return "Manual";
             default:
                 return "Automatic";
         }

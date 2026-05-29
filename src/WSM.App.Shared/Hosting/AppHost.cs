@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using WSM.App.Shared.Services;
 using WSM.App.Shared.ViewModels;
 using WSM.App.Shared.Views;
+using WSM.Core.Interfaces;
 using WSM.Infrastructure.DependencyInjection;
 using MaterialDesignThemes.Wpf;
 
@@ -42,8 +43,22 @@ public sealed class AppHost
         services.AddSingleton(_ => new SnackbarMessageQueue(TimeSpan.FromSeconds(4)));
         services.AddSingleton<ISnackbarService, SnackbarService>();
         services.AddSingleton<ITrayIconService, TrayIconService>();
+        services.AddSingleton<AdminElevationService>();
+        services.AddSingleton<ConsoleLogHelper>();
+
+        services.AddSingleton<AppOperationLogService>();
+        services.AddSingleton<IOperationLogSink>(sp => sp.GetRequiredService<AppOperationLogService>());
+
+        services.AddSingleton<ServiceListViewModel>();
+        services.AddSingleton<ServiceInstallViewModel>();
+        services.AddSingleton<ServiceConsoleViewModel>();
+        services.AddSingleton<LogViewerViewModel>();
+        services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<NavigationService>();
+        services.AddSingleton<INavigationService>(sp => sp.GetRequiredService<NavigationService>());
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
+
         services.AddWsmInfrastructure();
     }
 }

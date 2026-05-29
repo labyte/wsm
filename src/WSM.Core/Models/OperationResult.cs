@@ -15,6 +15,11 @@ public sealed class OperationResult
 
     public Exception? Exception { get; set; }
 
+    /// <summary>
+    /// 详细输出（如 CLI stdout/stderr）。
+    /// </summary>
+    public string? Details { get; set; }
+
     public static OperationResult Ok(string? message = null)
     {
         return new OperationResult

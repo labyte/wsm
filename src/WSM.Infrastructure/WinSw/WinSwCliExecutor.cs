@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using WSM.Infrastructure.Logging;
 
 namespace WSM.Infrastructure.WinSw;
 
@@ -17,7 +18,8 @@ public sealed class WinSwCliExecutor
     public async Task<WinSwCommandResult> ExecuteAsync(
         string wrapperExePath,
         string command,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Action<string>? onOutputLine = null)
     {
         if (string.IsNullOrWhiteSpace(wrapperExePath))
         {
@@ -37,68 +39,54 @@ public sealed class WinSwCliExecutor
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             CreateNoWindow = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8
+            StandardOutputEncoding = LogTextEncodingHelper.GetProcessOutputEncoding(),
+            StandardErrorEncoding = LogTextEncodingHelper.GetProcessOutputEncoding()
         };
 
-        using (var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true })
+        using var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
+
+        if (!process.Start())
         {
-            var outputBuilder = new StringBuilder();
-            var errorBuilder = new StringBuilder();
-
-            process.OutputDataReceived += (_, e) =>
-            {
-                if (e.Data != null)
-                {
-                    outputBuilder.AppendLine(e.Data);
-                }
-            };
-
-            process.ErrorDataReceived += (_, e) =>
-            {
-                if (e.Data != null)
-                {
-                    errorBuilder.AppendLine(e.Data);
-                }
-            };
-
-            if (!process.Start())
-            {
-                return new WinSwCommandResult
-                {
-                    ExitCode = -1,
-                    StandardError = "无法启动 WinSW 进程。"
-                };
-            }
-
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-
-            using (cancellationToken.Register(() =>
-                   {
-                       try
-                       {
-                           if (!process.HasExited)
-                           {
-                               process.Kill();
-                           }
-                       }
-                       catch
-                       {
-                           // 忽略取消时的进程清理异常
-                       }
-                   }))
-            {
-                await Task.Run(() => process.WaitForExit(), cancellationToken).ConfigureAwait(false);
-            }
-
             return new WinSwCommandResult
             {
-                ExitCode = process.ExitCode,
-                StandardOutput = outputBuilder.ToString().Trim(),
-                StandardError = errorBuilder.ToString().Trim()
+                ExitCode = -1,
+                StandardError = "无法启动 WinSW 进程。"
             };
         }
+
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+
+        using (cancellationToken.Register(() =>
+               {
+                   try
+                   {
+                       if (!process.HasExited)
+                       {
+                           process.Kill();
+                       }
+                   }
+                   catch
+                   {
+                       // 忽略取消时的进程清理异常
+                   }
+               }))
+        {
+            await Task.Run(() => process.WaitForExit(), cancellationToken).ConfigureAwait(false);
+        }
+
+        var stdout = (await stdoutTask.ConfigureAwait(false)).Trim();
+        var stderr = (await stderrTask.ConfigureAwait(false)).Trim();
+
+        EmitLines(onOutputLine, stdout);
+        EmitLines(onOutputLine, stderr, prefix: "[stderr] ");
+
+        return new WinSwCommandResult
+        {
+            ExitCode = process.ExitCode,
+            StandardOutput = stdout,
+            StandardError = stderr
+        };
     }
 
     /// <summary>
@@ -114,5 +102,18 @@ public sealed class WinSwCliExecutor
         var line = output.Trim();
         var firstLine = line.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0];
         return firstLine.Trim();
+    }
+
+    private static void EmitLines(Action<string>? onOutputLine, string text, string? prefix = null)
+    {
+        if (onOutputLine == null || string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        foreach (var line in text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            onOutputLine(prefix + line);
+        }
     }
 }

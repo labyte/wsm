@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using WSM.Core.Interfaces;
 using WSM.Core.Services;
+using WSM.Infrastructure.Logging;
 using WSM.Infrastructure.Paths;
 using WSM.Infrastructure.Persistence;
 using WSM.Infrastructure.Scm;
@@ -18,6 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<WsmPaths>();
         services.AddSingleton<WinSwCliExecutor>();
         services.AddSingleton<WindowsScmService>();
+        services.AddSingleton<ServiceLogReader>();
         services.AddSingleton<IWinSwConfigGenerator, WinSwXmlGenerator>();
         services.AddSingleton<IServiceRepository, SqliteServiceRepository>();
         services.AddSingleton<IWinSwHostService, WinSwHostService>();

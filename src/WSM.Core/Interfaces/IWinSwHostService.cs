@@ -16,6 +16,8 @@ public interface IWinSwHostService
 
     Task<ServiceRuntimeStatus> GetStatusAsync(string serviceId, CancellationToken cancellationToken = default);
 
+    Task<ServiceRuntimeInfo> GetRuntimeInfoAsync(string serviceId, CancellationToken cancellationToken = default);
+
     Task<OperationResult> StartAsync(string serviceId, CancellationToken cancellationToken = default);
 
     Task<OperationResult> StopAsync(string serviceId, CancellationToken cancellationToken = default);

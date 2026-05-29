@@ -11,6 +11,20 @@ public class WinSwXmlGeneratorTests
     private readonly WinSwXmlGenerator _generator = new WinSwXmlGenerator();
 
     [Fact]
+    public void GenerateUtf8Bytes_StartsWithServiceElement_NoBom()
+    {
+        var service = CreateSampleService();
+        var bytes = _generator.GenerateUtf8Bytes(service);
+
+        Assert.NotEmpty(bytes);
+        Assert.Equal((byte)'<', bytes[0]);
+        Assert.NotEqual(0xEF, bytes[0]);
+
+        var xml = System.Text.Encoding.UTF8.GetString(bytes);
+        Assert.StartsWith("<service>", xml.TrimStart());
+    }
+
+    [Fact]
     public void Generate_IncludesRequiredWinSwElements()
     {
         var service = CreateSampleService();
@@ -21,14 +35,15 @@ public class WinSwXmlGeneratorTests
         Assert.Contains("<name>My API</name>", xml);
         Assert.Contains("<executable>C:\\apps\\my-api.exe</executable>", xml);
         Assert.Contains("<startmode>Automatic</startmode>", xml);
-        Assert.Contains("<delayedAutoStart>true</delayedAutoStart>", xml);
+        Assert.Contains("<delayedAutoStart", xml);
+        Assert.DoesNotContain("<delayedAutoStart>true</delayedAutoStart>", xml);
         Assert.Contains("mode=\"roll-by-size\"", xml);
         Assert.Contains("action=\"restart\"", xml);
         Assert.Contains("delay=\"5 sec\"", xml);
         Assert.Contains("delay=\"10 sec\"", xml);
         Assert.Contains("action=\"none\"", xml);
         Assert.Contains("<resetfailure>1 hour</resetfailure>", xml);
-        Assert.Contains("<stoptimeout>15 sec</stoptimeout>", xml);
+        Assert.Contains("<stoptimeout>15sec</stoptimeout>", xml);
     }
 
     [Fact]

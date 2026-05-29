@@ -1,0 +1,299 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using WSM.App.Shared.Navigation;
+using WSM.App.Shared.Services;
+using WSM.Core;
+using WSM.Core.Interfaces;
+using WSM.Core.Models;
+using WSM.Infrastructure.Paths;
+
+namespace WSM.App.Shared.ViewModels;
+
+/// <summary>
+/// 设置页 ViewModel。
+/// </summary>
+public partial class SettingsViewModel : ObservableObject, INavigationAware
+{
+    private readonly WsmPaths _paths;
+    private readonly AdminElevationService _adminElevation;
+    private readonly ISnackbarService _snackbarService;
+    private readonly IServiceRepository _serviceRepository;
+    private readonly IWinSwHostService _winSwHostService;
+    private readonly INavigationService _navigationService;
+
+    public SettingsViewModel(
+        WsmPaths paths,
+        AdminElevationService adminElevation,
+        ISnackbarService snackbarService,
+        IServiceRepository serviceRepository,
+        IWinSwHostService winSwHostService,
+        INavigationService navigationService)
+    {
+        _paths = paths;
+        _adminElevation = adminElevation;
+        _snackbarService = snackbarService;
+        _serviceRepository = serviceRepository;
+        _winSwHostService = winSwHostService;
+        _navigationService = navigationService;
+        AppVersion = typeof(Core.Models.ManagedService).Assembly.GetName().Version?.ToString() ?? "0.1.0";
+        DataRootPath = _paths.DataRoot;
+        RefreshAdminStatus();
+    }
+
+    public string AppVersion { get; }
+
+    [ObservableProperty]
+    private string _hint = "关闭主窗口时将最小化到系统托盘。";
+
+    [ObservableProperty]
+    private string _adminStatusText = string.Empty;
+
+    [ObservableProperty]
+    private bool _isRunningAsAdministrator;
+
+    [ObservableProperty]
+    private bool _canRestartElevated;
+
+    [ObservableProperty]
+    private string _dataRootPath = string.Empty;
+
+    [ObservableProperty]
+    private bool _isApplyingDataRoot;
+
+    public void OnNavigatedTo()
+    {
+        DataRootPath = _paths.DataRoot;
+        RefreshAdminStatus();
+    }
+
+    [RelayCommand]
+    private void RestartAsAdministrator()
+    {
+        if (_adminElevation.TryRestartAsAdministrator())
+        {
+            return;
+        }
+
+        _snackbarService.ShowError(
+            $"无法自动提权。请以管理员身份运行：{WsmConstants.AppDisplayName}.exe");
+    }
+
+    private void RefreshAdminStatus()
+    {
+        IsRunningAsAdministrator = _adminElevation.IsRunningAsAdministrator;
+        CanRestartElevated = _adminElevation.CanRestartElevated;
+        AdminStatusText = _adminElevation.GetAdminStatusText();
+    }
+
+    [RelayCommand]
+    private void BrowseDataRoot()
+    {
+        using var dialog = new FolderBrowserDialog
+        {
+            Description = "请选择 WSM 数据目录",
+            SelectedPath = DataRootPath
+        };
+
+        if (dialog.ShowDialog() == DialogResult.OK)
+        {
+            DataRootPath = dialog.SelectedPath;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ApplyDataRootAsync()
+    {
+        if (IsApplyingDataRoot)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(DataRootPath))
+        {
+            _snackbarService.ShowWarning("数据目录不能为空。");
+            return;
+        }
+
+        IsApplyingDataRoot = true;
+        try
+        {
+            var currentRoot = Path.GetFullPath(_paths.DataRoot);
+            var targetRoot = Path.GetFullPath(DataRootPath.Trim());
+            if (string.Equals(currentRoot, targetRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                _snackbarService.ShowInfo("数据目录未变化。");
+                return;
+            }
+
+            if (IsNestedPath(currentRoot, targetRoot) || IsNestedPath(targetRoot, currentRoot))
+            {
+                _snackbarService.ShowError("新旧数据目录不能互为父子目录，请选择独立路径。");
+                return;
+            }
+
+            var services = await _serviceRepository.GetAllAsync().ConfigureAwait(true);
+            var runningServiceIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var service in services)
+            {
+                var status = await _winSwHostService.GetStatusAsync(service.Id).ConfigureAwait(true);
+                if (status != ServiceRuntimeStatus.Running && status != ServiceRuntimeStatus.StartPending)
+                {
+                    continue;
+                }
+
+                runningServiceIds.Add(service.Id);
+                var stopResult = await _winSwHostService.StopAsync(service.Id).ConfigureAwait(true);
+                if (!stopResult.Success)
+                {
+                    _snackbarService.ShowError($"停止服务「{service.DisplayName}」失败：{stopResult.Message}");
+                    return;
+                }
+            }
+
+            MigrateDataRoot(currentRoot, targetRoot);
+
+            var changed = _paths.SetDataRoot(targetRoot);
+            DataRootPath = _paths.DataRoot;
+            if (!changed)
+            {
+                _snackbarService.ShowInfo("数据目录未变化。");
+                return;
+            }
+
+            foreach (var service in services)
+            {
+                var rebound = await RebindServiceToNewDataRootAsync(service).ConfigureAwait(true);
+                if (!rebound.Success)
+                {
+                    _snackbarService.ShowError($"迁移服务「{service.DisplayName}」失败：{rebound.Message}");
+                    return;
+                }
+            }
+
+            foreach (var serviceId in runningServiceIds)
+            {
+                var startResult = await _winSwHostService.StartAsync(serviceId).ConfigureAwait(true);
+                if (!startResult.Success)
+                {
+                    _snackbarService.ShowWarning($"服务「{serviceId}」迁移后未能自动恢复运行：{startResult.Message}");
+                }
+            }
+
+            _navigationService.NavigateTo(AppPage.ServiceList);
+            _snackbarService.ShowSuccess("数据目录已迁移并重绑定服务，原运行中的服务已尝试恢复。");
+        }
+        catch (System.Exception ex)
+        {
+            _snackbarService.ShowError("更新数据目录失败：" + ex.Message);
+        }
+        finally
+        {
+            IsApplyingDataRoot = false;
+        }
+    }
+
+    private static void MigrateDataRoot(string sourceRoot, string targetRoot)
+    {
+        if (!Directory.Exists(sourceRoot))
+        {
+            Directory.CreateDirectory(targetRoot);
+            return;
+        }
+
+        Directory.CreateDirectory(targetRoot);
+        CopyDirectoryRecursive(sourceRoot, targetRoot);
+    }
+
+    private static void CopyDirectoryRecursive(string sourceDir, string targetDir)
+    {
+        Directory.CreateDirectory(targetDir);
+
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            var targetFile = Path.Combine(targetDir, Path.GetFileName(file));
+            File.Copy(file, targetFile, overwrite: true);
+        }
+
+        foreach (var directory in Directory.GetDirectories(sourceDir))
+        {
+            var targetSubDir = Path.Combine(targetDir, Path.GetFileName(directory));
+            CopyDirectoryRecursive(directory, targetSubDir);
+        }
+    }
+
+    private static bool IsNestedPath(string parentPath, string candidateChildPath)
+    {
+        var normalizedParent = Path.GetFullPath(parentPath)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+        var normalizedChild = Path.GetFullPath(candidateChildPath)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+
+        return normalizedChild.StartsWith(normalizedParent, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<OperationResult> RebindServiceToNewDataRootAsync(ManagedService service)
+    {
+        // 优先 refresh：可更新 SCM 中的包装器路径
+        var refreshResult = await _winSwHostService.RefreshAsync(service).ConfigureAwait(true);
+        if (refreshResult.Success)
+        {
+            return refreshResult;
+        }
+
+        // refresh 失败时，执行卸载+重装兜底
+        var uninstallResult = await _winSwHostService.UninstallAsync(service.Id).ConfigureAwait(true);
+        if (!uninstallResult.Success)
+        {
+            return OperationResult.Fail("卸载旧服务失败：" + uninstallResult.Message, uninstallResult.Exception, uninstallResult.ErrorCode);
+        }
+
+        var installModel = CloneForReinstall(service);
+        installModel.StartAfterInstall = false;
+        var installResult = await _winSwHostService.InstallAsync(installModel).ConfigureAwait(true);
+        return installResult.Success
+            ? OperationResult.Ok()
+            : OperationResult.Fail("重装服务失败：" + installResult.Message, installResult.Exception, installResult.ErrorCode);
+    }
+
+    private static ManagedService CloneForReinstall(ManagedService source)
+    {
+        return new ManagedService
+        {
+            Id = source.Id,
+            DisplayName = source.DisplayName,
+            Description = source.Description,
+            ExecutablePath = source.ExecutablePath,
+            WorkingDirectory = source.WorkingDirectory,
+            Arguments = source.Arguments,
+            EnvironmentVariables = source.EnvironmentVariables
+                .Select(x => new EnvVariable { Name = x.Name, Value = x.Value })
+                .ToList(),
+            StartMode = source.StartMode,
+            DelayedAutoStart = source.DelayedAutoStart,
+            Dependencies = source.Dependencies.ToList(),
+            StopTimeoutSeconds = source.StopTimeoutSeconds,
+            StartAfterInstall = source.StartAfterInstall,
+            FailurePolicy = new FailurePolicy
+            {
+                ResetFailurePeriod = source.FailurePolicy.ResetFailurePeriod,
+                Actions = source.FailurePolicy.Actions
+                    .Select(x => new FailureActionEntry { Action = x.Action, Delay = x.Delay })
+                    .ToList()
+            },
+            LogPolicy = new LogPolicy
+            {
+                Mode = source.LogPolicy.Mode,
+                SizeThresholdKb = source.LogPolicy.SizeThresholdKb,
+                KeepFiles = source.LogPolicy.KeepFiles
+            }
+        };
+    }
+}

@@ -4,8 +4,8 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <!-- 服务管理需要管理员权限；开发阶段 asInvoker，发布时可改为 requireAdministrator -->
-        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+        <!-- 服务管理需要管理员权限，启动时弹出 UAC 提权 -->
+        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>

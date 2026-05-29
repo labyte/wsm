@@ -17,7 +17,7 @@ public sealed class SqliteServiceRepository : IServiceRepository, IDisposable
 {
     private readonly WsmPaths _paths;
     private readonly SemaphoreSlim _gate = new SemaphoreSlim(1, 1);
-    private bool _initialized;
+    private string? _initializedDatabasePath;
 
     public SqliteServiceRepository(WsmPaths paths)
     {
@@ -167,7 +167,7 @@ ON CONFLICT(id) DO UPDATE SET
 
     private async Task EnsureInitializedAsync(CancellationToken cancellationToken)
     {
-        if (_initialized)
+        if (string.Equals(_initializedDatabasePath, _paths.DatabasePath, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -175,7 +175,7 @@ ON CONFLICT(id) DO UPDATE SET
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_initialized)
+            if (string.Equals(_initializedDatabasePath, _paths.DatabasePath, StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -196,7 +196,7 @@ CREATE TABLE IF NOT EXISTS managed_services (
                 await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            _initialized = true;
+            _initializedDatabasePath = _paths.DatabasePath;
         }
         finally
         {
