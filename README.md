@@ -56,7 +56,13 @@ src/
 
 ## P1 状态（WSM.Core）
 
-- [x] 领域模型：`ManagedService`、日志/失败策略/校验结果等
-- [x] 核心接口：`IWinSwHostService`、`IServiceRepository`、`ILogAggregator` 等
-- [x] 纯逻辑：`WinSwXmlGenerator`、`ServiceConfigValidator`、`LogLevelParser`、`ServiceIdSuggester`、`OsVersionHelper`
-- [x] 单元测试：`tests/WSM.Core.Tests`（25 项）
+- [x] 领域模型、接口、WinSW XML 生成、校验、单元测试（25 项）
+
+## P2 状态（WSM.Infrastructure 切片 A）
+
+- [x] `WsmPaths` — `%ProgramData%\WSM` 目录规范
+- [x] `WinSwCliExecutor` — WinSW CLI 封装
+- [x] `WinSwHostService` — install / uninstall / start / stop / restart / refresh / status
+- [x] `WindowsScmService` — SCM 状态查询
+- [x] `SqliteServiceRepository` — SQLite 持久化
+- [x] DI 注册 + WinSW 复制到应用输出目录

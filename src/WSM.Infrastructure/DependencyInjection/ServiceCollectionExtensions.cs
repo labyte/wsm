@@ -1,4 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
+using WSM.Core.Interfaces;
+using WSM.Core.Services;
+using WSM.Infrastructure.Paths;
+using WSM.Infrastructure.Persistence;
+using WSM.Infrastructure.Scm;
+using WSM.Infrastructure.WinSw;
 
 namespace WSM.Infrastructure.DependencyInjection;
 
@@ -9,7 +15,13 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddWsmInfrastructure(this IServiceCollection services)
     {
-        // P2 阶段注册 WinSW、SCM、日志、SQLite 等服务
+        services.AddSingleton<WsmPaths>();
+        services.AddSingleton<WinSwCliExecutor>();
+        services.AddSingleton<WindowsScmService>();
+        services.AddSingleton<IWinSwConfigGenerator, WinSwXmlGenerator>();
+        services.AddSingleton<IServiceRepository, SqliteServiceRepository>();
+        services.AddSingleton<IWinSwHostService, WinSwHostService>();
+
         return services;
     }
 }
