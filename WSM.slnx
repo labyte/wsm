@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="src/WSM.Core/WSM.Core.csproj" />
+  <Project Path="src/WSM.Infrastructure/WSM.Infrastructure.csproj" />
+  <Project Path="src/WSM.App.Shared/WSM.App.Shared.csproj" />
+  <Project Path="src/WSM.App.Legacy/WSM.App.Legacy.csproj" />
+  <Project Path="src/WSM.App.Modern/WSM.App.Modern.csproj" />
+  <Project Path="tests/WSM.Core.Tests/WSM.Core.Tests.csproj" />
+</Solution>

@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <Company>WSM</Company>
+    <Product>Windows Service Manager</Product>
+    <Version>0.1.0</Version>
+    <Authors>WSM</Authors>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

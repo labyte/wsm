@@ -1,0 +1,35 @@
+## Build
+bin/
+obj/
+out/
+publish/
+
+## IDE
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## OS
+Thumbs.db
+Desktop.ini
+
+## NuGet
+*.nupkg
+packages/
+
+## Test / logs
+TestResults/
+*.log
+
+## WiX
+*.wixobj
+*.wixpdb
+
+## Local
+*.local.json
+
+## WinSW 二进制（通过 assets/winsw/README.md 下载）
+assets/winsw/*.exe

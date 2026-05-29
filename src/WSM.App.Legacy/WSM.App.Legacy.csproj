@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>WSM.App.Legacy</RootNamespace>
+    <AssemblyName>WSM-Legacy</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WSM.App.Shared\WSM.App.Shared.csproj" />
+    <ProjectReference Include="..\WSM.Infrastructure\WSM.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
