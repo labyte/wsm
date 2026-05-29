@@ -35,6 +35,8 @@ public sealed class ManagedService
 
     public FailurePolicy FailurePolicy { get; set; } = FailurePolicy.CreateStandard();
 
+    public ServiceRecoverySettings RecoverySettings { get; set; } = ServiceRecoverySettings.CreateDefault();
+
     public LogPolicy LogPolicy { get; set; } = LogPolicy.CreateDefault();
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

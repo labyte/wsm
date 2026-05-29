@@ -40,6 +40,7 @@ public sealed class ServiceConfigValidator
         ValidateStopTimeout(service.StopTimeoutSeconds, result);
         ValidateLogPolicy(service.LogPolicy, result);
         ValidateFailurePolicy(service.FailurePolicy, result);
+        ValidateRecoverySettings(service.RecoverySettings, result);
         ValidateEnvironmentVariables(service.EnvironmentVariables, result);
 
         return result;
@@ -162,6 +163,38 @@ public sealed class ServiceConfigValidator
         if (policy.Actions == null || policy.Actions.Count == 0)
         {
             result.AddError(nameof(FailurePolicy.Actions), "至少配置一条失败动作。");
+        }
+    }
+
+    private static void ValidateRecoverySettings(ServiceRecoverySettings? settings, ValidationResult result)
+    {
+        if (settings == null)
+        {
+            result.AddError(nameof(ManagedService.RecoverySettings), "恢复配置不能为空。");
+            return;
+        }
+
+        if (settings.EnableCrashRecovery)
+        {
+            if (settings.CrashRestartDelaySeconds <= 0)
+            {
+                result.AddError(nameof(ServiceRecoverySettings.CrashRestartDelaySeconds), "崩溃重启延迟必须大于 0 秒。");
+            }
+
+            if (settings.CrashMaxRestartCount <= 0)
+            {
+                result.AddError(nameof(ServiceRecoverySettings.CrashMaxRestartCount), "崩溃最大重启次数必须大于 0。");
+            }
+        }
+
+        if (settings.EnableHangRecovery && settings.HangDetectionTimeoutSeconds <= 0)
+        {
+            result.AddError(nameof(ServiceRecoverySettings.HangDetectionTimeoutSeconds), "卡死判定超时必须大于 0 秒。");
+        }
+
+        if (settings.EnablePseudoHangRecovery && settings.PseudoHangTimeoutSeconds <= 0)
+        {
+            result.AddError(nameof(ServiceRecoverySettings.PseudoHangTimeoutSeconds), "假死判定超时必须大于 0 秒。");
         }
     }
 

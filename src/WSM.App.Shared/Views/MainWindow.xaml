@@ -116,15 +116,6 @@
           </StackPanel>
         </StackPanel>
 
-        <StackPanel DockPanel.Dock="Bottom" Margin="0,0,0,10">
-          <Border Height="1"
-                  Margin="16,0"
-                  Background="{DynamicResource MaterialDesignDivider}" />
-          <ListBox ItemsSource="{Binding SecondaryNavigationItems}"
-                   SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}"
-                   Style="{StaticResource SidebarNavigationListBoxStyle}" />
-        </StackPanel>
-
         <ListBox Margin="0,10,0,0"
                  ItemsSource="{Binding PrimaryNavigationItems}"
                  SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}"

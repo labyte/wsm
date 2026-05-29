@@ -288,6 +288,17 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
                     .Select(x => new FailureActionEntry { Action = x.Action, Delay = x.Delay })
                     .ToList()
             },
+            RecoverySettings = new ServiceRecoverySettings
+            {
+                EnableCrashRecovery = source.RecoverySettings.EnableCrashRecovery,
+                CrashRestartDelaySeconds = source.RecoverySettings.CrashRestartDelaySeconds,
+                CrashMaxRestartCount = source.RecoverySettings.CrashMaxRestartCount,
+                EnableHangRecovery = source.RecoverySettings.EnableHangRecovery,
+                HangDetectionTimeoutSeconds = source.RecoverySettings.HangDetectionTimeoutSeconds,
+                EnablePseudoHangRecovery = source.RecoverySettings.EnablePseudoHangRecovery,
+                PseudoHangTimeoutSeconds = source.RecoverySettings.PseudoHangTimeoutSeconds,
+                RestartOnAnomaly = source.RecoverySettings.RestartOnAnomaly
+            },
             LogPolicy = new LogPolicy
             {
                 Mode = source.LogPolicy.Mode,

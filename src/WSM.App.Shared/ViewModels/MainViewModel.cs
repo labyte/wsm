@@ -34,11 +34,7 @@ public partial class MainViewModel : ObservableObject
         {
             new NavigationItem(AppPage.ServiceList, "服务总览", "FormatListBulletedSquare"),
             new NavigationItem(AppPage.ServiceConsole, "服务控制台", "ConsoleLine"),
-            new NavigationItem(AppPage.Logs, "操作日志", "TextBoxSearchOutline")
-        };
-
-        SecondaryNavigationItems = new ObservableCollection<NavigationItem>
-        {
+            new NavigationItem(AppPage.Logs, "操作日志", "TextBoxSearchOutline"),
             new NavigationItem(AppPage.AddService, "添加服务", "PlusBox"),
             new NavigationItem(AppPage.Settings, "设置", "CogOutline")
         };
@@ -49,8 +45,6 @@ public partial class MainViewModel : ObservableObject
     public string Title => Core.WsmConstants.AppDisplayName;
 
     public ObservableCollection<NavigationItem> PrimaryNavigationItems { get; }
-
-    public ObservableCollection<NavigationItem> SecondaryNavigationItems { get; }
 
     [ObservableProperty]
     private NavigationItem? _selectedNavigationItem;
@@ -71,8 +65,7 @@ public partial class MainViewModel : ObservableObject
 
     public void NavigateTo(AppPage page)
     {
-        var item = PrimaryNavigationItems.FirstOrDefault(x => x.Page == page)
-            ?? SecondaryNavigationItems.FirstOrDefault(x => x.Page == page);
+        var item = PrimaryNavigationItems.FirstOrDefault(x => x.Page == page);
         if (item == null)
         {
             return;

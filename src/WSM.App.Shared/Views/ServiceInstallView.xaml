@@ -8,97 +8,287 @@
              d:DesignHeight="520"
              d:DesignWidth="800">
 
+  <UserControl.Resources>
+    <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Opacity" Value="0.78" />
+      <Setter Property="Margin" Value="0,0,12,0" />
+    </Style>
+  </UserControl.Resources>
+
   <Grid>
     <Grid.RowDefinitions>
-      <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <TextBlock Grid.Row="0"
-               Text="{Binding CurrentStepTitle}"
-               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
-               Margin="0,0,0,16" />
+    <ScrollViewer Grid.Row="0"
+                  VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  Style="{StaticResource MaterialDesignScrollViewer}">
+      <ScrollViewer.Resources>
+        <Style TargetType="ScrollBar">
+          <Setter Property="Width" Value="5" />
+          <Setter Property="Background" Value="Transparent" />
+          <Setter Property="Opacity" Value="0.42" />
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ScrollViewer}, Path=IsMouseOver}" Value="True">
+              <Setter Property="Width" Value="12" />
+              <Setter Property="Opacity" Value="1" />
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </ScrollViewer.Resources>
 
-    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-      <StackPanel>
-        <!-- 步骤 1：选择程序 -->
-        <StackPanel Visibility="{Binding CurrentStep, Converter={StaticResource StepVisibilityConverter}, ConverterParameter=0}">
-          <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                  HorizontalAlignment="Left"
-                  Command="{Binding BrowseExecutableCommand}"
-                  Content="浏览可执行文件..." />
-          <TextBox Margin="0,12,0,0"
-                   materialDesign:HintAssist.Hint="可执行文件路径"
-                   Text="{Binding ExecutablePath, UpdateSourceTrigger=PropertyChanged}" />
-          <TextBox Margin="0,12,0,0"
-                   materialDesign:HintAssist.Hint="工作目录"
-                   Text="{Binding WorkingDirectory, UpdateSourceTrigger=PropertyChanged}" />
-          <TextBox Margin="0,12,0,0"
-                   materialDesign:HintAssist.Hint="启动参数"
-                   Text="{Binding Arguments, UpdateSourceTrigger=PropertyChanged}" />
-        </StackPanel>
+      <StackPanel Margin="20,0,14,0"
+                  HorizontalAlignment="Center"
+                  MaxWidth="680">
+        <materialDesign:Card Padding="16" Margin="0,0,0,12">
+          <StackPanel>
+            <TextBlock Text="程序与基本信息"
+                       Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
 
-        <!-- 步骤 2：基本信息 -->
-        <StackPanel Visibility="{Binding CurrentStep, Converter={StaticResource StepVisibilityConverter}, ConverterParameter=1}">
-          <TextBox materialDesign:HintAssist.Hint="服务 ID（小写、数字、连字符）"
-                   Text="{Binding ServiceId, UpdateSourceTrigger=PropertyChanged}" />
-          <TextBox Margin="0,12,0,0"
-                   materialDesign:HintAssist.Hint="显示名称"
-                   Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
-          <TextBox Margin="0,12,0,0"
-                   materialDesign:HintAssist.Hint="描述"
-                   Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
-                   AcceptsReturn="True"
-                   MinHeight="72"
-                   TextWrapping="Wrap" />
-        </StackPanel>
+            <Grid Margin="0,12,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="服务程序 *" Style="{StaticResource FieldLabelStyle}" />
+              <Button Grid.Column="1"
+                      Style="{StaticResource MaterialDesignOutlinedButton}"
+                      HorizontalAlignment="Left"
+                      Command="{Binding BrowseExecutableCommand}"
+                      Content="选择服务程序..." />
+            </Grid>
 
-        <!-- 步骤 3：运行与启动 -->
-        <StackPanel Visibility="{Binding CurrentStep, Converter={StaticResource StepVisibilityConverter}, ConverterParameter=2}">
-          <ComboBox materialDesign:HintAssist.Hint="启动类型"
-                    ItemsSource="{Binding StartModeOptions}"
-                    SelectedItem="{Binding StartMode}" />
-          <CheckBox Margin="0,12,0,0"
-                    Content="延迟自动启动"
-                    IsChecked="{Binding DelayedAutoStart}" />
-          <TextBox Margin="0,12,0,0"
-                   materialDesign:HintAssist.Hint="停止超时（秒）"
-                   Text="{Binding StopTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
-          <CheckBox Margin="0,12,0,0"
-                    Content="安装后立即启动"
-                    IsChecked="{Binding StartAfterInstall}" />
-        </StackPanel>
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="可执行路径 *" Style="{StaticResource FieldLabelStyle}" />
+              <TextBox Grid.Column="1" Text="{Binding ExecutablePath, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+            <TextBlock Margin="140,4,0,0"
+                       Text="{Binding ExecutablePathError}"
+                       Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                       FontSize="12" />
 
-        <!-- 步骤 4：守护与日志 -->
-        <StackPanel Visibility="{Binding CurrentStep, Converter={StaticResource StepVisibilityConverter}, ConverterParameter=3}">
-          <ComboBox materialDesign:HintAssist.Hint="失败重启策略模板"
-                    ItemsSource="{Binding FailurePolicyTemplates}"
-                    SelectedItem="{Binding FailurePolicyTemplate}" />
-          <TextBlock Margin="0,16,0,0"
-                     Opacity="0.7"
-                     TextWrapping="Wrap"
-                     Text="标准守护：2 次重启后停止；积极守护：3 次短延迟重启；仅监控：不自动重启。" />
-        </StackPanel>
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="工作目录" Style="{StaticResource FieldLabelStyle}" />
+              <TextBox Grid.Column="1" Text="{Binding WorkingDirectory, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="启动参数" Style="{StaticResource FieldLabelStyle}" />
+              <TextBox Grid.Column="1" Text="{Binding Arguments, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="服务 ID *" Style="{StaticResource FieldLabelStyle}" />
+              <TextBox Grid.Column="1" Text="{Binding ServiceId, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+            <TextBlock Margin="140,4,0,0"
+                       Text="{Binding ServiceIdError}"
+                       Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                       FontSize="12" />
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="显示名称 *" Style="{StaticResource FieldLabelStyle}" />
+              <TextBox Grid.Column="1" Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+            <TextBlock Margin="140,4,0,0"
+                       Text="{Binding DisplayNameError}"
+                       Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                       FontSize="12" />
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="描述" Style="{StaticResource FieldLabelStyle}" />
+              <TextBox Grid.Column="1"
+                       Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                       AcceptsReturn="True"
+                       MinHeight="72"
+                       TextWrapping="Wrap" />
+            </Grid>
+          </StackPanel>
+        </materialDesign:Card>
+
+        <materialDesign:Card Padding="16" Margin="0,0,0,12">
+          <StackPanel>
+            <TextBlock Text="运行与启动"
+                       Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
+
+            <Grid Margin="0,12,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="启动类型" Style="{StaticResource FieldLabelStyle}" />
+              <ComboBox Grid.Column="1"
+                        ItemsSource="{Binding StartModeOptions}"
+                        SelectedItem="{Binding StartMode}" />
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="延迟启动" Style="{StaticResource FieldLabelStyle}" />
+              <CheckBox Grid.Column="1"
+                        Content="启用延迟自动启动"
+                        IsChecked="{Binding DelayedAutoStart}" />
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="停止超时 *" Style="{StaticResource FieldLabelStyle}" />
+              <TextBox Grid.Column="1" Text="{Binding StopTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+            <TextBlock Margin="140,4,0,0"
+                       Text="{Binding StopTimeoutError}"
+                       Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                       FontSize="12" />
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="安装后启动" Style="{StaticResource FieldLabelStyle}" />
+              <CheckBox Grid.Column="1"
+                        Content="安装后立即启动服务"
+                        IsChecked="{Binding StartAfterInstall}" />
+            </Grid>
+          </StackPanel>
+        </materialDesign:Card>
+
+        <materialDesign:Card Padding="16" Margin="0,0,0,12">
+          <StackPanel>
+            <TextBlock Text="自动恢复设置"
+                       Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
+
+            <Grid Margin="0,12,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="崩溃恢复" Style="{StaticResource FieldLabelStyle}" />
+              <CheckBox Grid.Column="1"
+                        Content="启用崩溃自动恢复（进程退出自动重启）"
+                        IsChecked="{Binding EnableCrashRecovery}" />
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="崩溃参数" Style="{StaticResource FieldLabelStyle}" />
+              <Grid Grid.Column="1">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="12" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0"
+                         materialDesign:HintAssist.Hint="重启延迟（秒）"
+                         Text="{Binding CrashRestartDelaySeconds, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBox Grid.Column="2"
+                         materialDesign:HintAssist.Hint="最大重启次数"
+                         Text="{Binding CrashMaxRestartCount, UpdateSourceTrigger=PropertyChanged}" />
+              </Grid>
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="卡死恢复" Style="{StaticResource FieldLabelStyle}" />
+              <CheckBox Grid.Column="1"
+                        Content="启用卡死恢复（无响应超时）"
+                        IsChecked="{Binding EnableHangRecovery}" />
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="卡死超时" Style="{StaticResource FieldLabelStyle}" />
+              <TextBox Grid.Column="1"
+                       Text="{Binding HangDetectionTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="假死恢复" Style="{StaticResource FieldLabelStyle}" />
+              <CheckBox Grid.Column="1"
+                        Content="启用假死恢复（长时间异常但未退出）"
+                        IsChecked="{Binding EnablePseudoHangRecovery}" />
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="假死超时" Style="{StaticResource FieldLabelStyle}" />
+              <TextBox Grid.Column="1"
+                       Text="{Binding PseudoHangTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="恢复动作" Style="{StaticResource FieldLabelStyle}" />
+              <CheckBox Grid.Column="1"
+                        Content="异常时自动执行恢复动作（重启）"
+                        IsChecked="{Binding RestartOnAnomaly}" />
+            </Grid>
+            <TextBlock Margin="140,6,0,0"
+                       Text="{Binding HangRecoveryError}"
+                       Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                       FontSize="12" />
+          </StackPanel>
+        </materialDesign:Card>
       </StackPanel>
     </ScrollViewer>
 
-    <DockPanel Grid.Row="2" Margin="0,16,0,0">
+    <DockPanel Grid.Row="1" Margin="20,12,20,0">
       <Button DockPanel.Dock="Right"
               Style="{StaticResource MaterialDesignRaisedButton}"
               Command="{Binding InstallCommand}"
-              Content="安装服务"
-              Visibility="{Binding CurrentStep, Converter={StaticResource StepIsLastVisibilityConverter}}" />
-      <Button DockPanel.Dock="Right"
-              Margin="0,0,8,0"
-              Style="{StaticResource MaterialDesignOutlinedButton}"
-              Command="{Binding NextStepCommand}"
-              Content="下一步"
-              Visibility="{Binding CurrentStep, Converter={StaticResource StepIsNotLastVisibilityConverter}}" />
-      <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-              Command="{Binding PreviousStepCommand}"
-              Content="上一步"
-              IsEnabled="{Binding CurrentStep, Converter={StaticResource StepCanGoBackConverter}}" />
+              Content="安装服务" />
     </DockPanel>
   </Grid>
 </UserControl>

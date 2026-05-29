@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,7 +14,7 @@ using WSM.Core.Services;
 namespace WSM.App.Shared.ViewModels;
 
 /// <summary>
-/// 添加服务向导 ViewModel。
+/// 添加服务 ViewModel（单页分区表单）。
 /// </summary>
 public partial class ServiceInstallViewModel : ObservableObject, INavigationAware
 {
@@ -40,9 +39,6 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
         _navigationService = navigationService;
         _adminElevation = adminElevation;
     }
-
-    [ObservableProperty]
-    private int _currentStep;
 
     [ObservableProperty]
     private string _executablePath = string.Empty;
@@ -75,35 +71,61 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
     private bool _startAfterInstall = true;
 
     [ObservableProperty]
-    private FailurePolicyTemplate _failurePolicyTemplate = FailurePolicyTemplate.Standard;
+    private bool _enableCrashRecovery = true;
+
+    [ObservableProperty]
+    private int _crashRestartDelaySeconds = 5;
+
+    [ObservableProperty]
+    private int _crashMaxRestartCount = 3;
+
+    [ObservableProperty]
+    private bool _enableHangRecovery;
+
+    [ObservableProperty]
+    private int _hangDetectionTimeoutSeconds = 120;
+
+    [ObservableProperty]
+    private bool _enablePseudoHangRecovery;
+
+    [ObservableProperty]
+    private int _pseudoHangTimeoutSeconds = 300;
+
+    [ObservableProperty]
+    private bool _restartOnAnomaly = true;
 
     [ObservableProperty]
     private bool _isInstalling;
 
-    public IReadOnlyList<string> StepTitles { get; } = new[]
-    {
-        "选择程序",
-        "基本信息",
-        "运行与启动",
-        "守护与日志"
-    };
-
     public Array StartModeOptions => Enum.GetValues(typeof(ManagedServiceStartMode));
 
-    public Array FailurePolicyTemplates => Enum.GetValues(typeof(FailurePolicyTemplate));
+    [ObservableProperty]
+    private string _executablePathError = string.Empty;
 
-    public string CurrentStepTitle => CurrentStep >= 0 && CurrentStep < StepTitles.Count
-        ? StepTitles[CurrentStep]
-        : string.Empty;
+    [ObservableProperty]
+    private string _serviceIdError = string.Empty;
 
-    partial void OnCurrentStepChanged(int value)
-    {
-        OnPropertyChanged(nameof(CurrentStepTitle));
-    }
+    [ObservableProperty]
+    private string _displayNameError = string.Empty;
+
+    [ObservableProperty]
+    private string _stopTimeoutError = string.Empty;
+
+    [ObservableProperty]
+    private string _hangRecoveryError = string.Empty;
+
+    partial void OnExecutablePathChanged(string value) => ValidateAllFields(showSnackbar: false);
+    partial void OnServiceIdChanged(string value) => ValidateAllFields(showSnackbar: false);
+    partial void OnDisplayNameChanged(string value) => ValidateAllFields(showSnackbar: false);
+    partial void OnStopTimeoutSecondsChanged(int value) => ValidateAllFields(showSnackbar: false);
+    partial void OnEnableHangRecoveryChanged(bool value) => ValidateAllFields(showSnackbar: false);
+    partial void OnEnablePseudoHangRecoveryChanged(bool value) => ValidateAllFields(showSnackbar: false);
+    partial void OnHangDetectionTimeoutSecondsChanged(int value) => ValidateAllFields(showSnackbar: false);
+    partial void OnPseudoHangTimeoutSecondsChanged(int value) => ValidateAllFields(showSnackbar: false);
 
     public void OnNavigatedTo()
     {
-        if (CurrentStep == 0 && string.IsNullOrWhiteSpace(ExecutablePath))
+        if (string.IsNullOrWhiteSpace(ExecutablePath))
         {
             ResetForm();
         }
@@ -122,41 +144,18 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
         {
             ExecutablePath = dialog.FileName;
             WorkingDirectory = Path.GetDirectoryName(dialog.FileName) ?? string.Empty;
+            Arguments = string.Empty;
             ServiceId = _idSuggester.SuggestFromExecutablePath(dialog.FileName);
-            if (string.IsNullOrWhiteSpace(DisplayName))
-            {
-                DisplayName = Path.GetFileNameWithoutExtension(dialog.FileName);
-            }
-        }
-    }
-
-    [RelayCommand]
-    private void NextStep()
-    {
-        if (!ValidateCurrentStep())
-        {
-            return;
-        }
-
-        if (CurrentStep < StepTitles.Count - 1)
-        {
-            CurrentStep++;
-        }
-    }
-
-    [RelayCommand]
-    private void PreviousStep()
-    {
-        if (CurrentStep > 0)
-        {
-            CurrentStep--;
+            DisplayName = Path.GetFileNameWithoutExtension(dialog.FileName);
+            Description = $"由 WSM 托管：{Path.GetFileName(dialog.FileName)}";
+            ValidateAllFields(showSnackbar: false);
         }
     }
 
     [RelayCommand]
     private async Task InstallAsync()
     {
-        if (!ValidateAllSteps())
+        if (!ValidateAllFields(showSnackbar: true))
         {
             return;
         }
@@ -214,64 +213,68 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
         }
     }
 
-    private bool ValidateAllSteps()
+    private bool ValidateAllFields(bool showSnackbar)
     {
-        for (var step = 0; step < StepTitles.Count; step++)
+        ExecutablePathError = string.Empty;
+        ServiceIdError = string.Empty;
+        DisplayNameError = string.Empty;
+        StopTimeoutError = string.Empty;
+        HangRecoveryError = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(ExecutablePath) || !File.Exists(ExecutablePath))
         {
-            var previous = CurrentStep;
-            CurrentStep = step;
-            if (!ValidateCurrentStep())
+            ExecutablePathError = "请选择有效的可执行文件。";
+        }
+
+        if (string.IsNullOrWhiteSpace(ServiceId) || !_validator.IsValidIdFormat(ServiceId))
+        {
+            ServiceIdError = "服务 ID 必须以小写字母开头，且仅包含小写字母、数字和连字符。";
+        }
+
+        if (string.IsNullOrWhiteSpace(DisplayName))
+        {
+            DisplayNameError = "显示名称不能为空。";
+        }
+
+        if (StopTimeoutSeconds <= 0)
+        {
+            StopTimeoutError = "停止超时必须大于 0 秒。";
+        }
+
+        if (EnableHangRecovery && HangDetectionTimeoutSeconds <= 0)
+        {
+            HangRecoveryError = "卡死判定超时必须大于 0 秒。";
+        }
+
+        if (EnablePseudoHangRecovery && PseudoHangTimeoutSeconds <= 0)
+        {
+            HangRecoveryError = "假死判定超时必须大于 0 秒。";
+        }
+
+        var isValid = string.IsNullOrWhiteSpace(ExecutablePathError)
+            && string.IsNullOrWhiteSpace(ServiceIdError)
+            && string.IsNullOrWhiteSpace(DisplayNameError)
+            && string.IsNullOrWhiteSpace(StopTimeoutError)
+            && string.IsNullOrWhiteSpace(HangRecoveryError);
+
+        if (!isValid && showSnackbar)
+        {
+            var firstError = new[]
             {
-                return false;
+                ExecutablePathError,
+                ServiceIdError,
+                DisplayNameError,
+                StopTimeoutError,
+                HangRecoveryError
+            }.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+
+            if (!string.IsNullOrWhiteSpace(firstError))
+            {
+                _snackbarService.ShowWarning(firstError);
             }
-
-            CurrentStep = previous;
         }
 
-        CurrentStep = StepTitles.Count - 1;
-        return true;
-    }
-
-    private bool ValidateCurrentStep()
-    {
-        switch (CurrentStep)
-        {
-            case 0:
-                if (string.IsNullOrWhiteSpace(ExecutablePath) || !File.Exists(ExecutablePath))
-                {
-                    _snackbarService.ShowWarning("请选择有效的可执行文件。");
-                    return false;
-                }
-
-                return true;
-
-            case 1:
-                if (string.IsNullOrWhiteSpace(ServiceId) || !_validator.IsValidIdFormat(ServiceId))
-                {
-                    _snackbarService.ShowWarning("服务 ID 格式无效。");
-                    return false;
-                }
-
-                if (string.IsNullOrWhiteSpace(DisplayName))
-                {
-                    _snackbarService.ShowWarning("显示名称不能为空。");
-                    return false;
-                }
-
-                return true;
-
-            case 2:
-                if (StopTimeoutSeconds <= 0)
-                {
-                    _snackbarService.ShowWarning("停止超时必须大于 0。");
-                    return false;
-                }
-
-                return true;
-
-            default:
-                return true;
-        }
+        return isValid;
     }
 
     private ManagedService BuildManagedService()
@@ -288,14 +291,49 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
             DelayedAutoStart = DelayedAutoStart,
             StopTimeoutSeconds = StopTimeoutSeconds,
             StartAfterInstall = StartAfterInstall,
-            FailurePolicy = FailurePolicy.CreateFromTemplate(FailurePolicyTemplate),
+            FailurePolicy = BuildFailurePolicy(),
+            RecoverySettings = new ServiceRecoverySettings
+            {
+                EnableCrashRecovery = EnableCrashRecovery,
+                CrashRestartDelaySeconds = CrashRestartDelaySeconds,
+                CrashMaxRestartCount = CrashMaxRestartCount,
+                EnableHangRecovery = EnableHangRecovery,
+                HangDetectionTimeoutSeconds = HangDetectionTimeoutSeconds,
+                EnablePseudoHangRecovery = EnablePseudoHangRecovery,
+                PseudoHangTimeoutSeconds = PseudoHangTimeoutSeconds,
+                RestartOnAnomaly = RestartOnAnomaly
+            },
             LogPolicy = LogPolicy.CreateDefault()
+        };
+    }
+
+    private FailurePolicy BuildFailurePolicy()
+    {
+        if (!EnableCrashRecovery)
+        {
+            return FailurePolicy.CreateFromTemplate(FailurePolicyTemplate.MonitorOnly);
+        }
+
+        var actions = new System.Collections.Generic.List<FailureActionEntry>();
+        for (var i = 0; i < Math.Max(1, CrashMaxRestartCount); i++)
+        {
+            actions.Add(new FailureActionEntry
+            {
+                Action = FailureActionType.Restart,
+                Delay = $"{Math.Max(1, CrashRestartDelaySeconds)} sec"
+            });
+        }
+
+        actions.Add(new FailureActionEntry { Action = FailureActionType.None, Delay = "0 sec" });
+        return new FailurePolicy
+        {
+            ResetFailurePeriod = "1 hour",
+            Actions = actions
         };
     }
 
     private void ResetForm()
     {
-        CurrentStep = 0;
         ExecutablePath = string.Empty;
         WorkingDirectory = string.Empty;
         Arguments = string.Empty;
@@ -306,6 +344,18 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
         DelayedAutoStart = true;
         StopTimeoutSeconds = 15;
         StartAfterInstall = true;
-        FailurePolicyTemplate = FailurePolicyTemplate.Standard;
+        EnableCrashRecovery = true;
+        CrashRestartDelaySeconds = 5;
+        CrashMaxRestartCount = 3;
+        EnableHangRecovery = false;
+        HangDetectionTimeoutSeconds = 120;
+        EnablePseudoHangRecovery = false;
+        PseudoHangTimeoutSeconds = 300;
+        RestartOnAnomaly = true;
+        ExecutablePathError = string.Empty;
+        ServiceIdError = string.Empty;
+        DisplayNameError = string.Empty;
+        StopTimeoutError = string.Empty;
+        HangRecoveryError = string.Empty;
     }
 }
