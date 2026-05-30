@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -20,6 +22,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
     private readonly IWinSwHostService _winSwHostService;
     private readonly ISnackbarService _snackbarService;
     private readonly WsmPaths _paths;
+    private bool _isUpdatingSelection;
 
     public ServiceListViewModel(
         IServiceRepository serviceRepository,
@@ -35,12 +38,16 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
     }
 
     public ObservableCollection<ServiceListItemViewModel> Services { get; }
+    public ObservableCollection<ServiceListItemViewModel> SelectedServices { get; } = new();
 
     [ObservableProperty]
     private bool _isLoading;
 
     [ObservableProperty]
     private bool _isEmpty = true;
+
+    [ObservableProperty]
+    private bool _isAllSelected;
 
     public void OnNavigatedTo()
     {
@@ -59,17 +66,26 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         try
         {
             var services = await _serviceRepository.GetAllAsync().ConfigureAwait(true);
+            foreach (var service in Services)
+            {
+                service.PropertyChanged -= ServiceItemOnPropertyChanged;
+            }
+
             Services.Clear();
+            SelectedServices.Clear();
 
             foreach (var service in services.OrderBy(x => x.DisplayName))
             {
                 var item = new ServiceListItemViewModel(service);
                 item.SetConfigFilePath(_paths.GetServiceConfigPath(service.Id));
+                item.PropertyChanged += ServiceItemOnPropertyChanged;
                 Services.Add(item);
 
                 var runtime = await _winSwHostService.GetRuntimeInfoAsync(service.Id).ConfigureAwait(true);
                 item.UpdateRuntimeInfo(runtime);
             }
+
+            UpdateSelectAllState();
         }
         finally
         {
@@ -93,6 +109,24 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
     private async Task StopAsync(ServiceListItemViewModel? item)
     {
         await ExecuteServiceActionAsync(item, id => _winSwHostService.StopAsync(id)).ConfigureAwait(true);
+    }
+
+    [RelayCommand]
+    private async Task StartSelectedAsync()
+    {
+        await ExecuteBatchServiceActionAsync(
+            SelectedServices.Where(x => !x.IsRunning).ToList(),
+            id => _winSwHostService.StartAsync(id),
+            "一键启动完成。").ConfigureAwait(true);
+    }
+
+    [RelayCommand]
+    private async Task StopSelectedAsync()
+    {
+        await ExecuteBatchServiceActionAsync(
+            SelectedServices.Where(x => x.IsRunning).ToList(),
+            id => _winSwHostService.StopAsync(id),
+            "一键停止完成。").ConfigureAwait(true);
     }
 
     [RelayCommand]
@@ -211,6 +245,117 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         {
             item.IsBusy = false;
         }
+    }
+
+    private async Task ExecuteBatchServiceActionAsync(
+        IReadOnlyCollection<ServiceListItemViewModel> items,
+        System.Func<string, Task<Core.Models.OperationResult>> action,
+        string successMessage)
+    {
+        if (items.Count == 0)
+        {
+            _snackbarService.ShowInfo("请先选择至少一项可执行目标。");
+            return;
+        }
+
+        var failed = 0;
+        foreach (var item in items)
+        {
+            item.IsBusy = true;
+            try
+            {
+                var result = await action(item.ServiceId).ConfigureAwait(true);
+                if (!result.Success)
+                {
+                    failed++;
+                    _snackbarService.ShowError(result.Message);
+                    continue;
+                }
+
+                var runtime = await _winSwHostService.GetRuntimeInfoAsync(item.ServiceId).ConfigureAwait(true);
+                item.UpdateRuntimeInfo(runtime);
+            }
+            finally
+            {
+                item.IsBusy = false;
+            }
+        }
+
+        if (failed == 0)
+        {
+            _snackbarService.ShowSuccess(successMessage);
+        }
+        else
+        {
+            _snackbarService.ShowWarning($"批量操作完成，失败 {failed} 项。");
+        }
+    }
+
+    public void SetSelectedServices(IEnumerable<ServiceListItemViewModel> items)
+    {
+        SelectedServices.Clear();
+        foreach (var item in items.Distinct())
+        {
+            SelectedServices.Add(item);
+        }
+    }
+
+    partial void OnIsAllSelectedChanged(bool value)
+    {
+        if (_isUpdatingSelection)
+        {
+            return;
+        }
+
+        _isUpdatingSelection = true;
+        foreach (var item in Services)
+        {
+            item.IsSelected = value;
+        }
+        _isUpdatingSelection = false;
+
+        SyncSelectedServicesFromItems();
+        UpdateSelectAllState();
+    }
+
+    private void ServiceItemOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ServiceListItemViewModel.IsSelected))
+        {
+            return;
+        }
+
+        if (_isUpdatingSelection)
+        {
+            return;
+        }
+
+        SyncSelectedServicesFromItems();
+        UpdateSelectAllState();
+    }
+
+    private void SyncSelectedServicesFromItems()
+    {
+        SelectedServices.Clear();
+        foreach (var item in Services.Where(x => x.IsSelected))
+        {
+            SelectedServices.Add(item);
+        }
+    }
+
+    private void UpdateSelectAllState()
+    {
+        _isUpdatingSelection = true;
+        if (Services.Count == 0)
+        {
+            IsAllSelected = false;
+            _isUpdatingSelection = false;
+            return;
+        }
+
+        var selectedCount = Services.Count(x => x.IsSelected);
+        IsAllSelected = selectedCount == Services.Count;
+        _isUpdatingSelection = false;
     }
 
     private static void OpenPath(string path)

@@ -47,7 +47,7 @@
                      Opacity="0.85" />
         </StackPanel>
         <Button Margin="0,12,0,0"
-                Style="{StaticResource MaterialDesignOutlinedButton}"
+                Style="{StaticResource MaterialDesignFlatButton}"
                 HorizontalAlignment="Left"
                 Command="{Binding RestartAsAdministratorCommand}"
                 Content="以管理员身份重启"
@@ -66,11 +66,11 @@
                  Text="{Binding DataRootPath, UpdateSourceTrigger=PropertyChanged}"
                  materialDesign:HintAssist.Hint="WSM 数据目录" />
         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-          <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+          <Button Style="{StaticResource MaterialDesignFlatButton}"
                   Command="{Binding BrowseDataRootCommand}"
                   Content="浏览..." />
           <Button Margin="8,0,0,0"
-                  Style="{StaticResource MaterialDesignRaisedButton}"
+                  Style="{StaticResource MaterialDesignFlatButton}"
                   Command="{Binding ApplyDataRootCommand}"
                   Content="应用目录" />
         </StackPanel>

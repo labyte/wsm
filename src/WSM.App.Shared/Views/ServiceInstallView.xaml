@@ -39,7 +39,7 @@
           </Style.Triggers>
         </Style>
       </ScrollViewer.Resources>
-      <Grid HorizontalAlignment="Stretch">
+      <Grid HorizontalAlignment="Stretch"> 
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="0.15*" />
           <ColumnDefinition Width="*" />
@@ -59,7 +59,7 @@
               </Grid.ColumnDefinitions>
               <TextBlock Grid.Column="0" Text="服务程序 *" Style="{StaticResource FieldLabelStyle}" />
               <Button Grid.Column="1"
-                      Style="{StaticResource MaterialDesignOutlinedButton}"
+                      Style="{StaticResource MaterialDesignFlatButton}"
                       HorizontalAlignment="Left"
                       Command="{Binding BrowseExecutableCommand}"
                       Content="选择服务程序..." />
@@ -297,7 +297,7 @@
         </Grid.ColumnDefinitions>
 
          <Button DockPanel.Dock="Right" Grid.Column="1"
-              Style="{StaticResource MaterialDesignRaisedButton}"
+              Style="{StaticResource MaterialDesignFlatButton}"
               Command="{Binding InstallCommand}"
               Content="安装服务" /> 
         </Grid>  

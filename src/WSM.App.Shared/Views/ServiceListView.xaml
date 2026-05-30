@@ -7,6 +7,30 @@
              mc:Ignorable="d"
              d:DesignHeight="480"
              d:DesignWidth="900">
+  <UserControl.Resources>
+    <Style x:Key="ServiceSelectionCheckBoxStyle" TargetType="CheckBox">
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="ServiceActionIconButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignToolButton}">
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="Padding" Value="4" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <Style x:Key="MoreMenuIconStyle" TargetType="materialDesign:PackIcon">
+      <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True">
+          <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+  </UserControl.Resources>
 
   <Grid>
     <Grid.RowDefinitions>
@@ -16,7 +40,7 @@
 
     <DockPanel Grid.Row="0" Margin="0,0,0,16">
       <Button DockPanel.Dock="Right"
-              Style="{StaticResource MaterialDesignOutlinedButton}"
+              Style="{StaticResource MaterialDesignFlatButton}"
               Command="{Binding RefreshCommand}"
               Content="刷新" />
       <TextBlock Text="已注册的 Windows 服务"
@@ -40,82 +64,221 @@
                  Opacity="0.6"
                  Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-      <DataGrid ItemsSource="{Binding Services}"
+      <DataGrid x:Name="ServicesDataGrid"
+                ItemsSource="{Binding Services}"
                 AutoGenerateColumns="False"
                 CanUserAddRows="False"
                 CanUserDeleteRows="False"
                 CanUserReorderColumns="False"
                 CanUserResizeRows="False"
-                IsReadOnly="True"
+                IsReadOnly="False"
                 SelectionMode="Single"
+                SelectionUnit="Cell"
                 HeadersVisibility="Column"
                 GridLinesVisibility="Horizontal"
                 HorizontalGridLinesBrush="{DynamicResource MaterialDesignDivider}"
                 Style="{StaticResource MaterialDesignDataGrid}"
                 materialDesign:DataGridAssist.CellPadding="12 8"
                 materialDesign:DataGridAssist.ColumnHeaderPadding="12 8">
+        <DataGrid.ColumnHeaderStyle>
+          <Style TargetType="DataGridColumnHeader">
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+          </Style>
+        </DataGrid.ColumnHeaderStyle>
+        <DataGrid.Resources>
+          <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="Transparent" />
+          <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="Transparent" />
+          <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#1F1F1F" />
+          <Style x:Key="CenteredHeaderStyle" TargetType="DataGridColumnHeader">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        </DataGrid.Resources>
+        <DataGrid.CellStyle>
+          <Style TargetType="DataGridCell">
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+            <Style.Triggers>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+              </Trigger>
+            </Style.Triggers>
+          </Style>
+        </DataGrid.CellStyle>
+        <DataGrid.RowStyle>
+          <Style TargetType="DataGridRow">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="MinHeight" Value="44" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Style.Triggers>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+              </Trigger>
+            </Style.Triggers>
+          </Style>
+        </DataGrid.RowStyle>
         <DataGrid.Columns>
-          <DataGridTextColumn Header="服务名称"
-                              Binding="{Binding DisplayName}"
-                              Width="160" />
-          <DataGridTextColumn Header="状态"
-                              Binding="{Binding StatusText}"
-                              Width="90" />
-          <DataGridTextColumn Header="开始时间"
-                              Binding="{Binding StartedAtText}"
-                              Width="150" />
-          <DataGridTextColumn Header="程序目录"
-                              Binding="{Binding ProgramDirectory}"
-                              Width="*" />
-          <DataGridTemplateColumn Header="操作" Width="300">
+          <DataGridTemplateColumn Width="52"
+                                  IsReadOnly="False" HeaderStyle="{StaticResource CenteredHeaderStyle}">
+            <DataGridTemplateColumn.HeaderTemplate>
+              <DataTemplate>
+                <Grid HorizontalAlignment="Center"  VerticalAlignment="Center">
+                  <CheckBox Style="{StaticResource ServiceSelectionCheckBoxStyle}" HorizontalAlignment="Center"
+                            IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+              </DataTemplate>
+            </DataGridTemplateColumn.HeaderTemplate>
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate>
-                <StackPanel Orientation="Horizontal">
-                  <Button Style="{StaticResource MaterialDesignFlatButton}"
-                          Padding="8,0"
+                <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <CheckBox Style="{StaticResource ServiceSelectionCheckBoxStyle}"
+                            IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="服务名称"
+                              Binding="{Binding DisplayName}"
+                              IsReadOnly="True"
+                              Width="0.5*" MinWidth="160">
+            <DataGridTextColumn.ElementStyle>
+              <Style TargetType="TextBlock">
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Padding" Value="2 0" />
+              </Style>
+            </DataGridTextColumn.ElementStyle>
+          </DataGridTextColumn>
+          <DataGridTemplateColumn Header="状态" Width="0.5*" MinWidth="140">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="2 0">
+                  <materialDesign:PackIcon
+                                           Style="{StaticResource ServiceStatusIconStyle}"
+                                           Margin="0,0,4,0"
+                                           VerticalAlignment="Center" />
+                  <TextBlock
+                             Style="{StaticResource ServiceStatusTextStyle}"
+                             Text="{Binding StatusText}"
+                             VerticalAlignment="Center" />
+                </StackPanel>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="开始时间"
+                              Binding="{Binding StartedAtText}"
+                              IsReadOnly="True"
+                              MinWidth="150" Width="0.5*">
+            <DataGridTextColumn.ElementStyle>
+              <Style TargetType="TextBlock">
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Padding" Value="2 0" />
+              </Style>
+            </DataGridTextColumn.ElementStyle>
+          </DataGridTextColumn>
+          <DataGridTemplateColumn Header="程序目录" Width="*" IsReadOnly="True">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <TextBlock VerticalAlignment="Center" Padding="2 0"
+                           ToolTip="{Binding ProgramDirectory}"
+                           TextTrimming="CharacterEllipsis">
+                  <Hyperlink Command="{Binding DataContext.OpenProgramDirectoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                             CommandParameter="{Binding}"
+                             Foreground="{DynamicResource PrimaryHueMidBrush}">
+                    <Run Text="{Binding ProgramDirectory, Mode=OneWay}" />
+                  </Hyperlink>
+                </TextBlock>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="操作" Width="auto" IsReadOnly="True" HeaderStyle="{StaticResource CenteredHeaderStyle}">
+            <DataGridTemplateColumn.HeaderTemplate>
+              <DataTemplate>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" >
+                  <Button Style="{StaticResource ServiceActionIconButtonStyle}"
+                          ToolTip="一键启动所选服务"
+                          Command="{Binding DataContext.StartSelectedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                    <materialDesign:PackIcon Kind="Play" Foreground="#2E7D32" Width="22" Height="22" />
+                  </Button>
+                  <Button Style="{StaticResource ServiceActionIconButtonStyle}"
+                          Margin="8,0,0,0"
+                          ToolTip="一键停止所选服务"
+                          Command="{Binding DataContext.StopSelectedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                    <materialDesign:PackIcon Kind="Stop" Foreground="#B71C1C" Width="22" Height="22" />
+                  </Button>
+                </StackPanel>
+              </DataTemplate>
+            </DataGridTemplateColumn.HeaderTemplate>
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                  <Button Style="{StaticResource ServiceActionIconButtonStyle}"
+                          Margin="0,0,8,0"
+                          ToolTip="启动"
                           Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                           CommandParameter="{Binding}"
-                          Content="启动" />
-                  <Button Style="{StaticResource MaterialDesignFlatButton}"
-                          Padding="8,0"
+                          Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                    <materialDesign:PackIcon Kind="PlayCircleOutline"
+                                             Foreground="#2E7D32"
+                                             Width="22"
+                                             Height="22" />
+                  </Button>
+                  <Button Style="{StaticResource ServiceActionIconButtonStyle}"
+                          Margin="0,0,8,0"
+                          ToolTip="停止"
                           Command="{Binding DataContext.StopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                           CommandParameter="{Binding}"
-                          Content="停止" />
-                  <Button Style="{StaticResource MaterialDesignFlatButton}"
-                          Padding="8,0"
-                          Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                          CommandParameter="{Binding}"
-                          Content="重启" />
+                          Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <materialDesign:PackIcon Kind="StopCircleOutline"
+                                             Foreground="#B71C1C"
+                                             Width="22"
+                                             Height="22" />
+                  </Button>
                   <materialDesign:PopupBox PlacementMode="BottomAndAlignLeftEdges"
+                                           HorizontalAlignment="Left"
                                            StaysOpen="False">
                     <materialDesign:PopupBox.ToggleContent>
-                      <Button Style="{StaticResource MaterialDesignFlatButton}"
-                              Padding="8,0"
-                              Content="更多" />
+                      <materialDesign:PackIcon Kind="DotsHorizontal"
+                                               Width="20"
+                                               Height="20"
+                                               Margin="8,0,4,0"
+                                               Cursor="Hand"
+                                               ToolTip="更多操作"
+                                               Style="{StaticResource MoreMenuIconStyle}" />
                     </materialDesign:PopupBox.ToggleContent>
                     <StackPanel MinWidth="160">
                       <Button Style="{StaticResource MaterialDesignFlatButton}"
                               HorizontalContentAlignment="Left"
-                              Command="{Binding DataContext.OpenConfigCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                               CommandParameter="{Binding}"
-                              Content="打开配置" />
+                              Content="启动" />
                       <Button Style="{StaticResource MaterialDesignFlatButton}"
                               HorizontalContentAlignment="Left"
-                              Command="{Binding DataContext.OpenProgramDirectoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              Command="{Binding DataContext.StopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                               CommandParameter="{Binding}"
-                              Content="打开程序目录" />
-                      <Button Style="{StaticResource MaterialDesignFlatButton}"
-                              HorizontalContentAlignment="Left"
-                              Command="{Binding DataContext.OpenServiceDirectoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                              CommandParameter="{Binding}"
-                              Content="打开服务目录" />
-                      <Separator Margin="0,4" />
+                              Content="停止" />
                       <Button Style="{StaticResource MaterialDesignFlatButton}"
                               HorizontalContentAlignment="Left"
                               Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
                               Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                               CommandParameter="{Binding}"
-                              Content="卸载服务" />
+                              Content="卸载" />
+                      <Separator Margin="0,4" />
+                      <Button Style="{StaticResource MaterialDesignFlatButton}"
+                              HorizontalContentAlignment="Left"
+                              Command="{Binding DataContext.OpenConfigCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              CommandParameter="{Binding}"
+                              Content="配置" />
+                      <Button Style="{StaticResource MaterialDesignFlatButton}"
+                              HorizontalContentAlignment="Left"
+                              Command="{Binding DataContext.OpenProgramDirectoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              CommandParameter="{Binding}"
+                              Content="目录" />
                     </StackPanel>
                   </materialDesign:PopupBox>
                 </StackPanel>

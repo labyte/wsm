@@ -17,15 +17,15 @@
 
     <DockPanel Grid.Row="0" Margin="0,0,0,12">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-        <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+        <Button Style="{StaticResource MaterialDesignFlatButton}"
                 Margin="0,0,8,0"
                 Command="{Binding ExportCommand}"
                 Content="导出" />
-        <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+        <Button Style="{StaticResource MaterialDesignFlatButton}"
                 Margin="0,0,8,0"
                 Command="{Binding CopyAllCommand}"
                 Content="复制全部" />
-        <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+        <Button Style="{StaticResource MaterialDesignFlatButton}"
                 Command="{Binding RefreshCommand}"
                 Content="刷新" />
       </StackPanel>

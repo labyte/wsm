@@ -46,6 +46,12 @@ public partial class ServiceListItemViewModel : ObservableObject
     [ObservableProperty]
     private bool _isBusy;
 
+    [ObservableProperty]
+    private bool _isRunning;
+
+    [ObservableProperty]
+    private bool _isSelected;
+
     public void SetConfigFilePath(string path)
     {
         ConfigFilePath = path;
@@ -56,6 +62,7 @@ public partial class ServiceListItemViewModel : ObservableObject
         Status = info.Status;
         StatusText = MapStatusText(info.Status);
         StartedAtText = info.StartedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-";
+        IsRunning = info.Status == ServiceRuntimeStatus.Running || info.Status == ServiceRuntimeStatus.StartPending;
     }
 
     private static string MapStatusText(ServiceRuntimeStatus status)

@@ -1,7 +1,8 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-  xmlns:converters="clr-namespace:WSM.App.Shared.Converters">
+  xmlns:converters="clr-namespace:WSM.App.Shared.Converters"
+  xmlns:models="clr-namespace:WSM.Core.Models;assembly=WSM.Core">
 
   <ResourceDictionary.MergedDictionaries>
     <materialDesign:BundledTheme BaseTheme="Light" PrimaryColor="Blue" SecondaryColor="Teal" />
@@ -14,5 +15,55 @@
   <converters:StepIsLastVisibilityConverter x:Key="StepIsLastVisibilityConverter" />
   <converters:StepIsNotLastVisibilityConverter x:Key="StepIsNotLastVisibilityConverter" />
   <converters:StepCanGoBackConverter x:Key="StepCanGoBackConverter" />
+
+  <Style x:Key="ServiceStatusIconStyle" TargetType="materialDesign:PackIcon">
+    <Setter Property="Kind" Value="AlertCircleOutline" />
+    <Setter Property="Foreground" Value="#616161" />
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.Running}">
+        <Setter Property="Kind" Value="PlayCircle" />
+        <Setter Property="Foreground" Value="#2E7D32" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.Stopped}">
+        <Setter Property="Kind" Value="StopCircleOutline" />
+        <Setter Property="Foreground" Value="#B71C1C" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.StartPending}">
+        <Setter Property="Kind" Value="ProgressClock" />
+        <Setter Property="Foreground" Value="#EF6C00" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.StopPending}">
+        <Setter Property="Kind" Value="ProgressClock" />
+        <Setter Property="Foreground" Value="#EF6C00" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.NotInstalled}">
+        <Setter Property="Kind" Value="AlertCircleOutline" />
+        <Setter Property="Foreground" Value="#616161" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+  <Style x:Key="ServiceStatusTextStyle" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="#616161" />
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.Running}">
+        <Setter Property="Foreground" Value="#2E7D32" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.Stopped}">
+        <Setter Property="Foreground" Value="#B71C1C" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.StartPending}">
+        <Setter Property="Foreground" Value="#EF6C00" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.StopPending}">
+        <Setter Property="Foreground" Value="#EF6C00" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.NotInstalled}">
+        <Setter Property="Foreground" Value="#616161" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
 
 </ResourceDictionary>
