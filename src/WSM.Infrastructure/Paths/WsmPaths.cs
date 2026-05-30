@@ -21,6 +21,8 @@ public sealed class WsmPaths
     private string _servicesDirectory = string.Empty;
     private string _databaseDirectory = string.Empty;
     private string _databasePath = string.Empty;
+    private string _operationLogPath = string.Empty;
+    private bool _isCustomOperationLogPath;
     private string _winSwToolMode = WinSwToolModeBundledX64;
     private string _customWinSwPath = string.Empty;
 
@@ -43,6 +45,13 @@ public sealed class WsmPaths
         {
             _customWinSwPath = configuredWinSw.CustomPath!;
         }
+
+        var configuredOperationLogPath = LoadConfiguredOperationLogPath();
+        if (!string.IsNullOrWhiteSpace(configuredOperationLogPath))
+        {
+            _operationLogPath = Path.GetFullPath(configuredOperationLogPath!);
+            _isCustomOperationLogPath = true;
+        }
     }
 
     /// <summary>
@@ -57,6 +66,10 @@ public sealed class WsmPaths
     public string DatabaseDirectory => _databaseDirectory;
 
     public string DatabasePath => _databasePath;
+
+    public string AppLogsDirectory => Path.Combine(_dataRoot, "logs");
+
+    public string OperationLogPath => _operationLogPath;
 
     public string WinSwToolMode => _winSwToolMode;
 
@@ -144,6 +157,12 @@ public sealed class WsmPaths
         Directory.CreateDirectory(WinSwStoreDirectory);
         Directory.CreateDirectory(ServicesDirectory);
         Directory.CreateDirectory(DatabaseDirectory);
+        Directory.CreateDirectory(AppLogsDirectory);
+        var operationLogDirectory = Path.GetDirectoryName(OperationLogPath);
+        if (!string.IsNullOrWhiteSpace(operationLogDirectory))
+        {
+            Directory.CreateDirectory(operationLogDirectory);
+        }
     }
 
     /// <summary>
@@ -204,6 +223,39 @@ public sealed class WsmPaths
         return true;
     }
 
+    /// <summary>
+    /// 设置操作日志文件路径；为空时恢复默认路径。
+    /// </summary>
+    public bool SetOperationLogPath(string? operationLogPath)
+    {
+        lock (_sync)
+        {
+            var useDefault = string.IsNullOrWhiteSpace(operationLogPath);
+            var normalizedPath = useDefault
+                ? Path.Combine(AppLogsDirectory, "operations.log")
+                : Path.GetFullPath(operationLogPath!.Trim());
+            var isCustom = !useDefault;
+            var unchanged = string.Equals(_operationLogPath, normalizedPath, StringComparison.OrdinalIgnoreCase)
+                            && _isCustomOperationLogPath == isCustom;
+            if (unchanged)
+            {
+                return false;
+            }
+
+            _operationLogPath = normalizedPath;
+            _isCustomOperationLogPath = isCustom;
+            SaveConfiguredOperationLogPath(isCustom ? normalizedPath : string.Empty);
+        }
+
+        var directory = Path.GetDirectoryName(OperationLogPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        return true;
+    }
+
     private void UpdateDerivedPaths(string dataRoot)
     {
         _dataRoot = dataRoot;
@@ -211,6 +263,10 @@ public sealed class WsmPaths
         _servicesDirectory = Path.Combine(_dataRoot, "services");
         _databaseDirectory = Path.Combine(_dataRoot, "data");
         _databasePath = Path.Combine(_databaseDirectory, "wsm.db");
+        if (!_isCustomOperationLogPath)
+        {
+            _operationLogPath = Path.Combine(_dataRoot, "logs", "operations.log");
+        }
     }
 
     private static string GetConfigFilePath()
@@ -271,5 +327,32 @@ public sealed class WsmPaths
             mode ?? string.Empty,
             customPath ?? string.Empty
         });
+    }
+
+    private static string GetOperationLogConfigFilePath()
+    {
+        var appData = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "WSM");
+        Directory.CreateDirectory(appData);
+        return Path.Combine(appData, "operation-log-path.txt");
+    }
+
+    private static string? LoadConfiguredOperationLogPath()
+    {
+        var configPath = GetOperationLogConfigFilePath();
+        if (!File.Exists(configPath))
+        {
+            return null;
+        }
+
+        var content = File.ReadAllText(configPath).Trim();
+        return string.IsNullOrWhiteSpace(content) ? null : content;
+    }
+
+    private static void SaveConfiguredOperationLogPath(string operationLogPath)
+    {
+        var configPath = GetOperationLogConfigFilePath();
+        File.WriteAllText(configPath, operationLogPath ?? string.Empty);
     }
 }

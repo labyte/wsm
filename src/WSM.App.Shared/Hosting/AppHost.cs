@@ -5,6 +5,7 @@ using WSM.App.Shared.ViewModels;
 using WSM.App.Shared.Views;
 using WSM.Core.Interfaces;
 using WSM.Infrastructure.DependencyInjection;
+using WSM.Infrastructure.Logging;
 using MaterialDesignThemes.Wpf;
 
 namespace WSM.App.Shared.Hosting;
@@ -48,7 +49,11 @@ public sealed class AppHost
         services.AddSingleton<ConsoleLogHelper>();
 
         services.AddSingleton<AppOperationLogService>();
-        services.AddSingleton<IOperationLogSink>(sp => sp.GetRequiredService<AppOperationLogService>());
+        services.AddSingleton<NLogOperationLogSink>();
+        services.AddSingleton<IOperationLogSink>(sp =>
+            new CompositeOperationLogSink(
+                sp.GetRequiredService<AppOperationLogService>(),
+                sp.GetRequiredService<NLogOperationLogSink>()));
 
         services.AddSingleton<ServiceListViewModel>();
         services.AddSingleton<ServiceInstallViewModel>();

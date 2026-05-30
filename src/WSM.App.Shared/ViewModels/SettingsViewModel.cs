@@ -65,6 +65,7 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         DataRootPath = _paths.DataRoot;
         WinSwToolMode = _paths.WinSwToolMode;
         CustomWinSwPath = _paths.CustomWinSwPath;
+        OperationLogPath = _paths.OperationLogPath;
         UpdateWinSwToolDerivedState();
         RefreshAdminStatus();
     }
@@ -106,11 +107,18 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
     [ObservableProperty]
     private bool _isApplyingWinSwTool;
 
+    [ObservableProperty]
+    private string _operationLogPath = string.Empty;
+
+    [ObservableProperty]
+    private bool _isApplyingOperationLogPath;
+
     public void OnNavigatedTo()
     {
         DataRootPath = _paths.DataRoot;
         WinSwToolMode = _paths.WinSwToolMode;
         CustomWinSwPath = _paths.CustomWinSwPath;
+        OperationLogPath = _paths.OperationLogPath;
         UpdateWinSwToolDerivedState();
         RefreshAdminStatus();
     }
@@ -161,6 +169,22 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         if (dialog.ShowDialog() == DialogResult.OK)
         {
             CustomWinSwPath = dialog.FileName;
+        }
+    }
+
+    [RelayCommand]
+    private void BrowseOperationLogPath()
+    {
+        using var dialog = new SaveFileDialog
+        {
+            Filter = "日志文件 (*.log)|*.log|文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*",
+            FileName = string.IsNullOrWhiteSpace(OperationLogPath) ? "operations.log" : Path.GetFileName(OperationLogPath),
+            InitialDirectory = ResolveInitialDirectory(OperationLogPath, _paths.DataRoot)
+        };
+
+        if (dialog.ShowDialog() == DialogResult.OK)
+        {
+            OperationLogPath = dialog.FileName;
         }
     }
 
@@ -296,6 +320,52 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         return Task.CompletedTask;
     }
 
+    [RelayCommand]
+    private Task ApplyOperationLogPathAsync()
+    {
+        if (IsApplyingOperationLogPath)
+        {
+            return Task.CompletedTask;
+        }
+
+        IsApplyingOperationLogPath = true;
+        try
+        {
+            var targetPath = string.IsNullOrWhiteSpace(OperationLogPath)
+                ? null
+                : OperationLogPath.Trim();
+
+            if (!string.IsNullOrWhiteSpace(targetPath))
+            {
+                targetPath = Path.GetFullPath(targetPath);
+                var directory = Path.GetDirectoryName(targetPath);
+                if (string.IsNullOrWhiteSpace(directory))
+                {
+                    _snackbarService.ShowError("操作日志文件路径无效。");
+                    return Task.CompletedTask;
+                }
+
+                Directory.CreateDirectory(directory);
+            }
+
+            var changed = _paths.SetOperationLogPath(targetPath);
+            OperationLogPath = _paths.OperationLogPath;
+            _snackbarService.ShowInfo(changed
+                ? "操作日志文件路径已应用。"
+                : "操作日志文件路径未变化。");
+        }
+        catch (Exception ex)
+        {
+            _snackbarService.ShowError("应用操作日志文件路径失败：" + ex.Message);
+        }
+        finally
+        {
+            IsApplyingOperationLogPath = false;
+        }
+
+        return Task.CompletedTask;
+    }
+
     private static void MigrateDataRoot(string sourceRoot, string targetRoot)
     {
         if (!Directory.Exists(sourceRoot))
@@ -335,6 +405,23 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
             + Path.DirectorySeparatorChar;
 
         return normalizedChild.StartsWith(normalizedParent, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ResolveInitialDirectory(string? path, string fallbackDirectory)
+    {
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            var normalized = Path.GetFullPath(path);
+            var directory = Path.GetDirectoryName(normalized);
+            if (!string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory))
+            {
+                return directory;
+            }
+        }
+
+        return Directory.Exists(fallbackDirectory)
+            ? fallbackDirectory
+            : Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
     }
 
     partial void OnWinSwToolModeChanged(string value)

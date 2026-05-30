@@ -26,7 +26,7 @@
       <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
       <Style.Triggers>
         <Trigger Property="IsMouseOver" Value="True">
-          <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}" />
+          <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
         </Trigger>
       </Style.Triggers>
     </Style>
@@ -189,7 +189,7 @@
                            TextTrimming="CharacterEllipsis">
                   <Hyperlink Command="{Binding DataContext.OpenProgramDirectoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                              CommandParameter="{Binding}"
-                             Foreground="{DynamicResource PrimaryHueMidBrush}">
+                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}">
                     <Run Text="{Binding ProgramDirectory, Mode=OneWay}" />
                   </Hyperlink>
                 </TextBlock>

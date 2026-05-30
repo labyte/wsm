@@ -15,30 +15,82 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <DockPanel Grid.Row="0" Margin="0,0,0,12">
-      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-        <Button Style="{StaticResource MaterialDesignFlatButton}"
-                Margin="0,0,8,0"
-                Command="{Binding ExportCommand}"
-                Content="导出" />
-        <Button Style="{StaticResource MaterialDesignFlatButton}"
-                Margin="0,0,8,0"
-                Command="{Binding CopyAllCommand}"
-                Content="复制全部" />
-        <Button Style="{StaticResource MaterialDesignFlatButton}"
-                Command="{Binding ClearCommand}"
-                Content="清空" />
-      </StackPanel>
-      <StackPanel VerticalAlignment="Center">
+    <StackPanel Grid.Row="0" Margin="0,0,0,12">
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
         <TextBlock Text="WSM 操作日志"
+                   Margin="0,0,12,0"
+                   VerticalAlignment="Center"
                    Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
-        <TextBlock Text="{Binding StatusText}"
-                   Margin="0,4,0,0"
-                   Opacity="0.65"
-                   Style="{StaticResource MaterialDesignBody2TextBlock}" />
-      </StackPanel>
-    </DockPanel>
 
-    <controls:ConsoleLogView Grid.Row="1" Text="{Binding DisplayText}" />
+        <ComboBox Margin="0,0,12,0"
+                  MinWidth="220"
+                  VerticalAlignment="Center"
+                  materialDesign:HintAssist.Hint="选择服务"
+                  ItemsSource="{Binding ServiceOptions}"
+                  SelectedItem="{Binding SelectedService, Mode=TwoWay}"
+                  DisplayMemberPath="DisplayName" />
+
+        <CheckBox Margin="0,0,12,0"
+                  VerticalAlignment="Center"
+                  IsChecked="{Binding IsTracking, Mode=TwoWay}"
+                  Content="实时跟踪" />
+
+        <CheckBox Margin="0,0,12,0"
+                  VerticalAlignment="Center"
+                  IsChecked="{Binding IsWrapEnabled, Mode=TwoWay}"
+                  Content="自动换行" />
+
+        <ComboBox Margin="0,0,12,0"
+                  MinWidth="120"
+                  VerticalAlignment="Center"
+                  materialDesign:HintAssist.Hint="最大条数"
+                  ItemsSource="{Binding MaxLineOptions}"
+                  SelectedItem="{Binding SelectedMaxLines, Mode=TwoWay}" />
+
+        <ToolBarTray IsLocked="True"
+                     Background="Transparent">
+          <ToolBar>
+            <Button Command="{Binding ExportCommand}"
+                    ToolTip="导出日志">
+              <StackPanel Orientation="Horizontal">
+                <materialDesign:PackIcon Kind="Export" Width="16" Height="16" />
+                <TextBlock Margin="6,0,0,0" Text="导出" />
+              </StackPanel>
+            </Button>
+            <Button Command="{Binding CopyAllCommand}"
+                    ToolTip="复制全部日志">
+              <StackPanel Orientation="Horizontal">
+                <materialDesign:PackIcon Kind="ContentCopy" Width="16" Height="16" />
+                <TextBlock Margin="6,0,0,0" Text="复制" />
+              </StackPanel>
+            </Button>
+            <Button Command="{Binding RefreshCommand}"
+                    ToolTip="刷新日志">
+              <StackPanel Orientation="Horizontal">
+                <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16" />
+                <TextBlock Margin="6,0,0,0" Text="刷新" />
+              </StackPanel>
+            </Button>
+            <Button Command="{Binding ClearCommand}"
+                    ToolTip="清空日志">
+              <StackPanel Orientation="Horizontal">
+                <materialDesign:PackIcon Kind="DeleteOutline" Width="16" Height="16" />
+                <TextBlock Margin="6,0,0,0" Text="清空" />
+              </StackPanel>
+            </Button>
+          </ToolBar>
+        </ToolBarTray>
+      </StackPanel>
+
+      <TextBlock Text="{Binding StatusText}"
+                 Margin="0,6,0,0"
+                 Opacity="0.65"
+                 Style="{StaticResource MaterialDesignBody2TextBlock}" />
+    </StackPanel>
+
+    <controls:ConsoleLogView Grid.Row="1"
+                             Text="{Binding DisplayText}"
+                             WrapLines="{Binding IsWrapEnabled}"
+                             AutoScroll="{Binding IsTracking}" />
   </Grid>
 </UserControl>

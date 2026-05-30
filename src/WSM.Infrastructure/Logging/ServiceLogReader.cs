@@ -74,6 +74,31 @@ public sealed class ServiceLogReader
         return TakeLastSafe(ordered, maxLines);
     }
 
+    /// <summary>
+    /// 读取所有服务的 wrapper 历史日志，并按时间合并排序。
+    /// </summary>
+    public IReadOnlyList<ServiceLogLine> ReadMergedWrapperLogs(
+        IReadOnlyList<string> serviceIds,
+        int maxLines = 3000)
+    {
+        var lines = new List<ServiceLogLine>();
+
+        foreach (var serviceId in serviceIds)
+        {
+            foreach (var file in DiscoverWrapperLogFiles(serviceId))
+            {
+                lines.AddRange(ReadLogFile(serviceId, file));
+            }
+        }
+
+        var ordered = lines
+            .OrderBy(x => x.Timestamp ?? DateTime.MinValue)
+            .ThenBy(x => x.Text, StringComparer.Ordinal)
+            .ToList();
+
+        return TakeLastSafe(ordered, maxLines);
+    }
+
     private static List<ServiceLogLine> TakeLastSafe(List<ServiceLogLine> ordered, int maxLines)
     {
         if (ordered.Count <= maxLines)
@@ -85,6 +110,21 @@ public sealed class ServiceLogReader
     }
 
     public IReadOnlyList<string> DiscoverLogFiles(string serviceId)
+    {
+        return DiscoverLogFilesInternal(serviceId, includeWrapperLogs: false);
+    }
+
+    /// <summary>
+    /// 发现指定服务的 wrapper 日志文件（*.wrapper.log）。
+    /// </summary>
+    public IReadOnlyList<string> DiscoverWrapperLogFiles(string serviceId)
+    {
+        return DiscoverLogFilesInternal(serviceId, includeWrapperLogs: true)
+            .Where(IsWrapperLogFile)
+            .ToList();
+    }
+
+    private IReadOnlyList<string> DiscoverLogFilesInternal(string serviceId, bool includeWrapperLogs)
     {
         var results = new List<string>();
         var serviceDirectory = _paths.GetServiceDirectory(serviceId);
@@ -103,8 +143,11 @@ public sealed class ServiceLogReader
             results.AddRange(Directory.GetFiles(serviceDirectory, serviceId + ".*.log", SearchOption.TopDirectoryOnly));
         }
 
-        return results
-            .Where(path => !IsWrapperLogFile(path))
+        var filtered = includeWrapperLogs
+            ? results.Where(path => IsWrapperLogFile(path))
+            : results.Where(path => !IsWrapperLogFile(path));
+
+        return filtered
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -142,12 +185,77 @@ public sealed class ServiceLogReader
             .ToList();
     }
 
+    /// <summary>
+    /// 发现存在 wrapper 日志的服务。
+    /// </summary>
+    public IReadOnlyList<string> DiscoverServiceIdsWithWrapperLogs()
+    {
+        if (!Directory.Exists(_paths.ServicesDirectory))
+        {
+            return Array.Empty<string>();
+        }
+
+        var serviceIds = new List<string>();
+        foreach (var directory in Directory.GetDirectories(_paths.ServicesDirectory))
+        {
+            var serviceId = Path.GetFileName(directory);
+            if (string.IsNullOrWhiteSpace(serviceId))
+            {
+                continue;
+            }
+
+            if (DiscoverWrapperLogFiles(serviceId).Count > 0)
+            {
+                serviceIds.Add(serviceId);
+            }
+        }
+
+        return serviceIds
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     public int ClearLogs(IReadOnlyList<string> serviceIds)
     {
         var clearedCount = 0;
         foreach (var serviceId in serviceIds)
         {
             foreach (var filePath in DiscoverLogFiles(serviceId))
+            {
+                try
+                {
+                    if (!File.Exists(filePath))
+                    {
+                        continue;
+                    }
+
+                    File.WriteAllText(filePath, string.Empty);
+                    clearedCount++;
+                }
+                catch (IOException)
+                {
+                    // 忽略单个文件清理失败，继续处理其余日志文件。
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // 忽略权限不足文件，避免中断整个清理流程。
+                }
+            }
+        }
+
+        return clearedCount;
+    }
+
+    /// <summary>
+    /// 清空所有服务的 wrapper 日志文件内容。
+    /// </summary>
+    public int ClearWrapperLogs(IReadOnlyList<string> serviceIds)
+    {
+        var clearedCount = 0;
+        foreach (var serviceId in serviceIds)
+        {
+            foreach (var filePath in DiscoverWrapperLogFiles(serviceId))
             {
                 try
                 {
