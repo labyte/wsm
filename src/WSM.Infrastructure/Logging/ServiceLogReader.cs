@@ -90,7 +90,6 @@ public sealed class ServiceLogReader
         var serviceDirectory = _paths.GetServiceDirectory(serviceId);
         var logsDirectory = _paths.GetServiceLogsDirectory(serviceId);
 
-        AddIfExists(results, Path.Combine(serviceDirectory, serviceId + ".wrapper.log"));
         AddIfExists(results, Path.Combine(serviceDirectory, serviceId + ".out.log"));
         AddIfExists(results, Path.Combine(serviceDirectory, serviceId + ".err.log"));
 
@@ -104,7 +103,74 @@ public sealed class ServiceLogReader
             results.AddRange(Directory.GetFiles(serviceDirectory, serviceId + ".*.log", SearchOption.TopDirectoryOnly));
         }
 
-        return results.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+        return results
+            .Where(path => !IsWrapperLogFile(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public IReadOnlyList<string> DiscoverServiceIdsWithLogs()
+    {
+        if (!Directory.Exists(_paths.ServicesDirectory))
+        {
+            return Array.Empty<string>();
+        }
+
+        var serviceIds = new List<string>();
+        foreach (var directory in Directory.GetDirectories(_paths.ServicesDirectory))
+        {
+            var serviceId = Path.GetFileName(directory);
+            if (string.IsNullOrWhiteSpace(serviceId))
+            {
+                continue;
+            }
+
+            var hasRootLogs = Directory.GetFiles(directory, "*.log", SearchOption.TopDirectoryOnly).Length > 0;
+            var logsDirectory = Path.Combine(directory, "logs");
+            var hasNestedLogs = Directory.Exists(logsDirectory)
+                                && Directory.GetFiles(logsDirectory, "*.log", SearchOption.TopDirectoryOnly).Length > 0;
+            if (hasRootLogs || hasNestedLogs)
+            {
+                serviceIds.Add(serviceId);
+            }
+        }
+
+        return serviceIds
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public int ClearLogs(IReadOnlyList<string> serviceIds)
+    {
+        var clearedCount = 0;
+        foreach (var serviceId in serviceIds)
+        {
+            foreach (var filePath in DiscoverLogFiles(serviceId))
+            {
+                try
+                {
+                    if (!File.Exists(filePath))
+                    {
+                        continue;
+                    }
+
+                    File.WriteAllText(filePath, string.Empty);
+                    clearedCount++;
+                }
+                catch (IOException)
+                {
+                    // 忽略单个文件清理失败，继续处理其余日志文件。
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // 忽略权限不足文件，避免中断整个清理流程。
+                }
+            }
+        }
+
+        return clearedCount;
     }
 
     private IEnumerable<ServiceLogLine> ReadLogFile(string serviceId, string filePath)
@@ -133,7 +199,7 @@ public sealed class ServiceLogReader
             source = "log";
         }
 
-        foreach (var rawLine in LogTextEncodingHelper.ReadAllLines(filePath))
+        foreach (var rawLine in ReadLogLinesSafe(filePath))
         {
             if (string.IsNullOrWhiteSpace(rawLine))
             {
@@ -159,11 +225,40 @@ public sealed class ServiceLogReader
         }
     }
 
+    private static IEnumerable<string> ReadLogLinesSafe(string filePath)
+    {
+        try
+        {
+            // 允许在日志被服务进程写入时并发读取，减少“文件占用”导致的整批读取失败。
+            using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            using (var memory = new MemoryStream())
+            {
+                stream.CopyTo(memory);
+                var text = LogTextEncodingHelper.DecodeBytes(memory.ToArray());
+                return text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            }
+        }
+        catch (IOException)
+        {
+            return Array.Empty<string>();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Array.Empty<string>();
+        }
+    }
+
     private static void AddIfExists(ICollection<string> list, string path)
     {
         if (File.Exists(path))
         {
             list.Add(path);
         }
+    }
+
+    private static bool IsWrapperLogFile(string filePath)
+    {
+        var fileName = Path.GetFileName(filePath);
+        return fileName.IndexOf(".wrapper.", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 }

@@ -14,6 +14,18 @@ public partial class ConsoleLogView : UserControl
         typeof(ConsoleLogView),
         new PropertyMetadata(string.Empty));
 
+    public static readonly DependencyProperty AutoScrollProperty = DependencyProperty.Register(
+        nameof(AutoScroll),
+        typeof(bool),
+        typeof(ConsoleLogView),
+        new PropertyMetadata(true, OnAutoScrollChanged));
+
+    public static readonly DependencyProperty WrapLinesProperty = DependencyProperty.Register(
+        nameof(WrapLines),
+        typeof(bool),
+        typeof(ConsoleLogView),
+        new PropertyMetadata(true));
+
     public ConsoleLogView()
     {
         InitializeComponent();
@@ -25,9 +37,37 @@ public partial class ConsoleLogView : UserControl
         set => SetValue(TextProperty, value);
     }
 
+    public bool AutoScroll
+    {
+        get => (bool)GetValue(AutoScrollProperty);
+        set => SetValue(AutoScrollProperty, value);
+    }
+
+    public bool WrapLines
+    {
+        get => (bool)GetValue(WrapLinesProperty);
+        set => SetValue(WrapLinesProperty, value);
+    }
+
     public void SelectAll()
     {
         LogTextBox.Focus();
         LogTextBox.SelectAll();
+    }
+
+    private void OnLogTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (AutoScroll)
+        {
+            LogTextBox.ScrollToEnd();
+        }
+    }
+
+    private static void OnAutoScrollChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is ConsoleLogView view && e.NewValue is bool enabled && enabled)
+        {
+            view.LogTextBox.ScrollToEnd();
+        }
     }
 }

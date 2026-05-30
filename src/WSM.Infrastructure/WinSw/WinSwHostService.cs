@@ -308,6 +308,11 @@ public sealed class WinSwHostService : IWinSwHostService
             if (!result.Success)
             {
                 var message = BuildFailureMessage($"{actionName}服务失败", result);
+                if (string.Equals(command, "start", StringComparison.OrdinalIgnoreCase))
+                {
+                    message = AppendStartFailureDiagnostics(serviceId, message, result);
+                }
+
                 LogOperation(OperationLogLevel.Error, actionName, message);
                 var failResult = OperationResult.Fail(message, errorCode: "WINSW_COMMAND_FAILED");
                 failResult.Details = BuildDetails(result);
@@ -406,5 +411,35 @@ public sealed class WinSwHostService : IWinSwHostService
         }
 
         return result.StandardOutput + result.StandardError;
+    }
+
+    private string AppendStartFailureDiagnostics(string serviceId, string message, WinSwCommandResult result)
+    {
+        var output = (result.StandardOutput + Environment.NewLine + result.StandardError).Trim();
+        var hasAttachConsoleWarning = output.IndexOf("Failed to attach to console", StringComparison.OrdinalIgnoreCase) >= 0;
+        var hasChildProcessExit = output.IndexOf("Child process", StringComparison.OrdinalIgnoreCase) >= 0
+                                  && output.IndexOf("finished with code", StringComparison.OrdinalIgnoreCase) >= 0;
+
+        var serviceDirectory = _paths.GetServiceDirectory(serviceId);
+        var wrapperLog = Path.Combine(serviceDirectory, serviceId + ".wrapper.log");
+        var outLog = Path.Combine(serviceDirectory, serviceId + ".out.log");
+        var errLog = Path.Combine(serviceDirectory, serviceId + ".err.log");
+
+        if (hasAttachConsoleWarning && hasChildProcessExit)
+        {
+            return message
+                   + Environment.NewLine
+                   + "诊断提示：检测到 WinSW 控制台附加告警（Failed to attach to console），这通常是伴随信息；真正根因通常是子进程异常退出。"
+                   + Environment.NewLine
+                   + $"请优先检查：{errLog}"
+                   + Environment.NewLine
+                   + $"并对照查看：{wrapperLog}、{outLog}"
+                   + Environment.NewLine
+                   + "若为 ASP.NET/.NET Worker（net10），请确认程序已按 Windows Service 方式运行（例如 UseWindowsService），并确认服务账号对工作目录/证书/端口有权限。";
+        }
+
+        return message
+               + Environment.NewLine
+               + $"排查日志：{errLog}（应用错误）、{wrapperLog}（WinSW 包装器）、{outLog}（标准输出）。";
     }
 }

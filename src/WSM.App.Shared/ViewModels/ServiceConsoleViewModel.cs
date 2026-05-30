@@ -34,10 +34,17 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
         ServiceOptions = new ObservableCollection<ServiceConsoleOption> { ServiceConsoleOption.All };
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-        _refreshTimer.Tick += (_, _) => _ = RefreshAsync();
+        _refreshTimer.Tick += (_, _) =>
+        {
+            if (IsTracking)
+            {
+                _ = RefreshAsync();
+            }
+        };
     }
 
     public ObservableCollection<ServiceConsoleOption> ServiceOptions { get; }
+    public ObservableCollection<int> MaxLineOptions { get; } = new() { 200, 500, 1000, 2000, 3000, 5000 };
 
     [ObservableProperty]
     private ServiceConsoleOption? _selectedService = ServiceConsoleOption.All;
@@ -51,8 +58,36 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
     [ObservableProperty]
     private string _displayText = string.Empty;
 
+    [ObservableProperty]
+    private bool _isTracking = true;
+
+    [ObservableProperty]
+    private bool _isWrapEnabled = true;
+
+    [ObservableProperty]
+    private int _selectedMaxLines = 1000;
+
     partial void OnSelectedServiceChanged(ServiceConsoleOption? value)
     {
+        _ = RefreshAsync();
+    }
+
+    partial void OnIsTrackingChanged(bool value)
+    {
+        if (value)
+        {
+            _ = RefreshAsync();
+        }
+    }
+
+    partial void OnSelectedMaxLinesChanged(int value)
+    {
+        if (value <= 0)
+        {
+            SelectedMaxLines = 1000;
+            return;
+        }
+
         _ = RefreshAsync();
     }
 
@@ -92,12 +127,14 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
                 return;
             }
 
-            var logLines = _logReader.ReadMergedLogs(serviceIds);
+            var logLines = _logReader.ReadMergedLogs(serviceIds, SelectedMaxLines);
             DisplayText = string.Join(Environment.NewLine, logLines.Select(x => x.DisplayText));
 
-            StatusText = SelectedService?.ServiceId == null
-                ? $"全部服务 · {logLines.Count} 行"
-                : $"{SelectedService.DisplayName} · {logLines.Count} 行";
+            var scopeText = SelectedService?.ServiceId == null
+                ? "全部服务"
+                : SelectedService.DisplayName;
+            var trackText = IsTracking ? "实时跟踪" : "暂停跟踪";
+            StatusText = $"{scopeText} · {logLines.Count}/{SelectedMaxLines} 行 · {trackText}";
         }
         finally
         {
@@ -118,9 +155,23 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
         _consoleLogHelper.ExportToFile(DisplayText, $"service-{serviceName}-{DateTime.Now:yyyyMMdd-HHmmss}.log");
     }
 
+    [RelayCommand]
+    private async Task ClearAsync()
+    {
+        var serviceIds = ResolveTargetServiceIds();
+        if (serviceIds.Count > 0)
+        {
+            await Task.Run(() => _logReader.ClearLogs(serviceIds)).ConfigureAwait(true);
+        }
+
+        DisplayText = string.Empty;
+        StatusText = "日志已清空（文件内容已删除）";
+    }
+
     private async Task LoadServicesAsync()
     {
         var services = await _serviceRepository.GetAllAsync().ConfigureAwait(true);
+        var discoveredIds = _logReader.DiscoverServiceIdsWithLogs();
         var currentId = _pendingServiceId ?? SelectedService?.ServiceId;
 
         ServiceOptions.Clear();
@@ -131,10 +182,21 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
             ServiceOptions.Add(new ServiceConsoleOption(service.Id, service.DisplayName));
         }
 
+        foreach (var serviceId in discoveredIds)
+        {
+            if (ServiceOptions.Any(x => string.Equals(x.ServiceId, serviceId, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            ServiceOptions.Add(new ServiceConsoleOption(serviceId, serviceId));
+        }
+
         SelectedService = ServiceOptions.FirstOrDefault(x => x.ServiceId == currentId)
             ?? ServiceConsoleOption.All;
 
         _pendingServiceId = null;
+        await RefreshAsync().ConfigureAwait(true);
     }
 
     private void TryApplyPendingServiceSelection()
@@ -159,10 +221,17 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
             return new System.Collections.Generic.List<string> { SelectedService.ServiceId };
         }
 
-        return ServiceOptions
+        var configuredServiceIds = ServiceOptions
             .Where(x => x.ServiceId != null)
             .Select(x => x.ServiceId!)
             .Distinct()
             .ToList();
+
+        if (configuredServiceIds.Count > 0)
+        {
+            return configuredServiceIds;
+        }
+
+        return _logReader.DiscoverServiceIdsWithLogs().ToList();
     }
 }
