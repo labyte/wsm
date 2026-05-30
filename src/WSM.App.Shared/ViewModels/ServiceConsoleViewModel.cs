@@ -128,13 +128,19 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
             }
 
             var logLines = _logReader.ReadMergedLogs(serviceIds, SelectedMaxLines);
-            DisplayText = string.Join(Environment.NewLine, logLines.Select(x => x.DisplayText));
+            var effectiveLines = logLines
+                .SelectMany(x => SplitToNonEmptyLines(x.DisplayText))
+                .ToList();
+            var joinedText = string.Join(Environment.NewLine, effectiveLines);
+            DisplayText = effectiveLines.Count == 0
+                ? string.Empty
+                : joinedText + Environment.NewLine + Environment.NewLine;
 
             var scopeText = SelectedService?.ServiceId == null
                 ? "全部服务"
                 : SelectedService.DisplayName;
             var trackText = IsTracking ? "实时跟踪" : "暂停跟踪";
-            StatusText = $"{scopeText} · {logLines.Count}/{SelectedMaxLines} 行 · {trackText}";
+            StatusText = $"{scopeText} · {effectiveLines.Count}/{SelectedMaxLines} 行 · {trackText}";
         }
         finally
         {
@@ -233,5 +239,17 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
         }
 
         return _logReader.DiscoverServiceIdsWithLogs().ToList();
+    }
+
+    private static System.Collections.Generic.IEnumerable<string> SplitToNonEmptyLines(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return Array.Empty<string>();
+        }
+
+        return text
+            .Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)
+            .Where(line => !string.IsNullOrWhiteSpace(line));
     }
 }

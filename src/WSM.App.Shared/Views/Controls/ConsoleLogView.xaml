@@ -10,41 +10,52 @@
   <UserControl.Resources>
     <Style x:Key="ConsoleVerticalScrollBarStyle"
            TargetType="{x:Type ScrollBar}">
-      <Setter Property="Width" Value="6" />
       <Setter Property="Background" Value="#2B2B2B" />
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="{x:Type ScrollBar}">
-            <Grid Background="{TemplateBinding Background}">
+            <Grid Background="Transparent" Name="PART_ScrollBar" Width="4">
               <Track x:Name="PART_Track"
                      IsDirectionReversed="True">
                 <Track.Thumb>
-                  <Thumb Background="#A0A0A0"
+                  <Thumb x:Name="PART_Thumb"
+                         Background="#A0A0A0"
                          BorderBrush="#A0A0A0"
                          BorderThickness="0"
-                         Margin="0,2,0,2" />
+                         Width="2"
+                         Margin="0,2,0,2"/>
                 </Track.Thumb>
               </Track>
 
+              <!-- Use native default RepeatButton style for arrows -->
               <RepeatButton x:Name="LineUpButton"
+                             Background="#A0A0A0"
+                            BorderBrush="#A0A0A0"
                             Command="ScrollBar.LineUpCommand"
                             VerticalAlignment="Top"
-                            Height="12"
-                            Visibility="Collapsed" />
+                            Visibility="Collapsed"
+                            Height="18"
+                            Focusable="False" />
               <RepeatButton x:Name="LineDownButton"
+                             Background="#A0A0A0"
+                BorderBrush="#A0A0A0"
                             Command="ScrollBar.LineDownCommand"
                             VerticalAlignment="Bottom"
-                            Height="12"
-                            Visibility="Collapsed" />
+                            Visibility="Collapsed"
+                            
+                            Height="18"
+                            Focusable="False" />
             </Grid>
             <ControlTemplate.Triggers>
               <Trigger Property="Orientation" Value="Horizontal">
                 <Setter Property="Visibility" Value="Collapsed" />
+                <Setter Property="Width" Value="4" />
               </Trigger>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Width" Value="12" />
-                <Setter TargetName="LineUpButton" Property="Visibility" Value="Visible" />
-                <Setter TargetName="LineDownButton" Property="Visibility" Value="Visible" />
+                <Setter Property="Visibility" Value="Visible" />
+                <Setter TargetName="PART_Thumb" Property="Width" Value="12" />
+                <Setter TargetName="PART_ScrollBar" Property="Width" Value="14" />
+                <Setter TargetName="PART_ScrollBar" Property="Background" Value="{ StaticResource MaterialDesignDarkSeparatorBackground}" />
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -55,9 +66,10 @@
 
   <Border Background="#1E1E1E"
           CornerRadius="4"
-          Padding="12">
+          Padding="12 2 0 2">
     <TextBox x:Name="LogTextBox"
              Text="{Binding Text, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
+             Padding="0 100 0 124"
              TextChanged="OnLogTextChanged"
              IsReadOnly="True"
              AcceptsReturn="True"
