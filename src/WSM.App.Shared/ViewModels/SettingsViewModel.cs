@@ -20,6 +20,18 @@ namespace WSM.App.Shared.ViewModels;
 /// </summary>
 public partial class SettingsViewModel : ObservableObject, INavigationAware
 {
+    public sealed class WinSwToolOption
+    {
+        public WinSwToolOption(string value, string display)
+        {
+            Value = value;
+            Display = display;
+        }
+
+        public string Value { get; }
+        public string Display { get; }
+    }
+
     private readonly WsmPaths _paths;
     private readonly AdminElevationService _adminElevation;
     private readonly ISnackbarService _snackbarService;
@@ -41,12 +53,25 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         _serviceRepository = serviceRepository;
         _winSwHostService = winSwHostService;
         _navigationService = navigationService;
+        WinSwToolModeOptions = new List<WinSwToolOption>
+        {
+            new(WsmPaths.WinSwToolModeBundledX64, "内置 WinSW x64（推荐）"),
+            new(WsmPaths.WinSwToolModeBundledX86, "内置 WinSW x86"),
+            new(WsmPaths.WinSwToolModeBundledNet461, "内置 WinSW .NET Framework"),
+            new(WsmPaths.WinSwToolModeGlobal, "全局 winsw 命令"),
+            new(WsmPaths.WinSwToolModeCustom, "自定义可执行路径")
+        };
         AppVersion = typeof(Core.Models.ManagedService).Assembly.GetName().Version?.ToString() ?? "0.1.0";
         DataRootPath = _paths.DataRoot;
+        WinSwToolMode = _paths.WinSwToolMode;
+        CustomWinSwPath = _paths.CustomWinSwPath;
+        UpdateWinSwToolDerivedState();
         RefreshAdminStatus();
     }
 
     public string AppVersion { get; }
+
+    public IReadOnlyList<WinSwToolOption> WinSwToolModeOptions { get; }
 
     [ObservableProperty]
     private string _hint = "关闭主窗口时将最小化到系统托盘。";
@@ -66,9 +91,27 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
     [ObservableProperty]
     private bool _isApplyingDataRoot;
 
+    [ObservableProperty]
+    private string _winSwToolMode = WsmPaths.WinSwToolModeBundledX64;
+
+    [ObservableProperty]
+    private string _customWinSwPath = string.Empty;
+
+    [ObservableProperty]
+    private bool _isCustomWinSwPathEnabled;
+
+    [ObservableProperty]
+    private string _effectiveWinSwPath = string.Empty;
+
+    [ObservableProperty]
+    private bool _isApplyingWinSwTool;
+
     public void OnNavigatedTo()
     {
         DataRootPath = _paths.DataRoot;
+        WinSwToolMode = _paths.WinSwToolMode;
+        CustomWinSwPath = _paths.CustomWinSwPath;
+        UpdateWinSwToolDerivedState();
         RefreshAdminStatus();
     }
 
@@ -103,6 +146,21 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         if (dialog.ShowDialog() == DialogResult.OK)
         {
             DataRootPath = dialog.SelectedPath;
+        }
+    }
+
+    [RelayCommand]
+    private void BrowseWinSwPath()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Filter = "可执行文件 (*.exe)|*.exe|所有文件 (*.*)|*.*",
+            FileName = CustomWinSwPath
+        };
+
+        if (dialog.ShowDialog() == DialogResult.OK)
+        {
+            CustomWinSwPath = dialog.FileName;
         }
     }
 
@@ -198,6 +256,46 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         }
     }
 
+    [RelayCommand]
+    private Task ApplyWinSwToolAsync()
+    {
+        if (IsApplyingWinSwTool)
+        {
+            return Task.CompletedTask;
+        }
+
+        IsApplyingWinSwTool = true;
+        try
+        {
+            if (WinSwToolMode == WsmPaths.WinSwToolModeCustom)
+            {
+                if (string.IsNullOrWhiteSpace(CustomWinSwPath))
+                {
+                    _snackbarService.ShowWarning("请先指定自定义 WinSW 可执行文件路径。");
+                    return Task.CompletedTask;
+                }
+
+                if (!File.Exists(CustomWinSwPath))
+                {
+                    _snackbarService.ShowError("指定的 WinSW 可执行文件不存在。");
+                    return Task.CompletedTask;
+                }
+            }
+
+            var changed = _paths.SetWinSwTool(WinSwToolMode, CustomWinSwPath);
+            UpdateWinSwToolDerivedState();
+            _snackbarService.ShowInfo(changed
+                ? "WinSW 执行配置已应用。"
+                : "WinSW 执行配置未变化。");
+        }
+        finally
+        {
+            IsApplyingWinSwTool = false;
+        }
+
+        return Task.CompletedTask;
+    }
+
     private static void MigrateDataRoot(string sourceRoot, string targetRoot)
     {
         if (!Directory.Exists(sourceRoot))
@@ -239,6 +337,38 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         return normalizedChild.StartsWith(normalizedParent, StringComparison.OrdinalIgnoreCase);
     }
 
+    partial void OnWinSwToolModeChanged(string value)
+    {
+        UpdateWinSwToolDerivedState();
+    }
+
+    partial void OnCustomWinSwPathChanged(string value)
+    {
+        UpdateWinSwToolDerivedState();
+    }
+
+    private void UpdateWinSwToolDerivedState()
+    {
+        IsCustomWinSwPathEnabled = string.Equals(WinSwToolMode, WsmPaths.WinSwToolModeCustom, StringComparison.Ordinal);
+        EffectiveWinSwPath = ResolveEffectiveWinSwPathPreview();
+    }
+
+    private string ResolveEffectiveWinSwPathPreview()
+    {
+        if (string.Equals(WinSwToolMode, WsmPaths.WinSwToolModeCustom, StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(CustomWinSwPath))
+        {
+            return CustomWinSwPath;
+        }
+
+        if (string.Equals(WinSwToolMode, WsmPaths.WinSwToolModeGlobal, StringComparison.Ordinal))
+        {
+            return "winsw（PATH）";
+        }
+
+        return _paths.ResolveWinSwExecutablePath();
+    }
+
     private async Task<OperationResult> RebindServiceToNewDataRootAsync(ManagedService service)
     {
         // 优先 refresh：可更新 SCM 中的包装器路径
@@ -278,6 +408,8 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
                 .ToList(),
             StartMode = source.StartMode,
             DelayedAutoStart = source.DelayedAutoStart,
+            AutoRefresh = source.AutoRefresh,
+            HideWindow = source.HideWindow,
             Dependencies = source.Dependencies.ToList(),
             StopTimeoutSeconds = source.StopTimeoutSeconds,
             StartAfterInstall = source.StartAfterInstall,

@@ -9,7 +9,7 @@ using WSM.Core.Models;
 namespace WSM.Core.Services;
 
 /// <summary>
-/// 将 <see cref="ManagedService"/> 生成为 WinSW XML 配置（兼容 WinSW 2.x）。
+/// 将 <see cref="ManagedService"/> 生成为 WinSW XML 配置（对齐 WinSW 3 文档）。
 /// </summary>
 public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
 {
@@ -30,7 +30,7 @@ public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
         var settings = new XmlWriterSettings
         {
             Indent = true,
-            // WinSW 2.x 对带 BOM 的文件可能报 Line 1 position 1 错误
+            // 使用无 BOM UTF-8，避免不同 WinSW 版本的兼容性问题
             OmitXmlDeclaration = true,
             Encoding = Utf8NoBom
         };
@@ -77,8 +77,17 @@ public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
 
             if (service.DelayedAutoStart && service.StartMode == ManagedServiceStartMode.Automatic)
             {
-                writer.WriteStartElement("delayedAutoStart");
-                writer.WriteEndElement();
+                // 依据 WinSW 文档，布尔配置项应显式写入 true/false 文本值
+                WriteElement(writer, "delayedAutoStart", "true");
+            }
+
+            // 依据 WinSW 文档，显式写入 autoRefresh，避免跨版本默认行为差异。
+            WriteElement(writer, "autoRefresh", ToLowerBoolean(service.AutoRefresh));
+
+            // hidewindow 为可选项，仅在启用时写出。
+            if (service.HideWindow)
+            {
+                WriteElement(writer, "hidewindow", "true");
             }
 
             foreach (var dependency in service.Dependencies)
@@ -164,6 +173,11 @@ public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
         writer.WriteStartElement(name);
         writer.WriteString(value);
         writer.WriteEndElement();
+    }
+
+    private static string ToLowerBoolean(bool value)
+    {
+        return value ? "true" : "false";
     }
 
     internal static string MapStartMode(ManagedServiceStartMode mode)

@@ -81,6 +81,35 @@
       </StackPanel>
     </materialDesign:Card>
 
+    <materialDesign:Card Padding="16" Margin="0,0,0,12">
+      <StackPanel>
+        <TextBlock Text="WinSW 执行配置" Style="{StaticResource MaterialDesignSubtitle2TextBlock}" />
+        <ComboBox Margin="0,8,0,0"
+                  DisplayMemberPath="Display"
+                  SelectedValuePath="Value"
+                  ItemsSource="{Binding WinSwToolModeOptions}"
+                  SelectedValue="{Binding WinSwToolMode, Mode=TwoWay}" />
+        <TextBox Margin="0,8,0,0"
+                 IsEnabled="{Binding IsCustomWinSwPathEnabled}"
+                 Text="{Binding CustomWinSwPath, UpdateSourceTrigger=PropertyChanged}"
+                 materialDesign:HintAssist.Hint="自定义 WinSW.exe 路径（仅自定义模式）" />
+        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+          <Button Style="{StaticResource MaterialDesignFlatButton}"
+                  Command="{Binding BrowseWinSwPathCommand}"
+                  IsEnabled="{Binding IsCustomWinSwPathEnabled}"
+                  Content="浏览 WinSW..." />
+          <Button Margin="8,0,0,0"
+                  Style="{StaticResource MaterialDesignFlatButton}"
+                  Command="{Binding ApplyWinSwToolCommand}"
+                  Content="应用 WinSW 配置" />
+        </StackPanel>
+        <TextBlock Margin="0,10,0,0"
+                   Opacity="0.65"
+                   TextWrapping="Wrap"
+                   Text="{Binding EffectiveWinSwPath, StringFormat=当前生效执行路径：{0}}" />
+      </StackPanel>
+    </materialDesign:Card>
+
     <materialDesign:Card Padding="16">
       <StackPanel>
         <TextBlock Text="{Binding Hint}" TextWrapping="Wrap" Opacity="0.85" />

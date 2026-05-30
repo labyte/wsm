@@ -71,7 +71,7 @@
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
               <TextBlock Grid.Column="0" Text="可执行路径 *" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1" Text="{Binding ExecutablePath, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox Grid.Column="1" Text="{Binding Draft.ExecutablePath, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
             <TextBlock Margin="140,4,0,0"
                        Text="{Binding ExecutablePathError}"
@@ -84,7 +84,7 @@
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
               <TextBlock Grid.Column="0" Text="工作目录" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1" Text="{Binding WorkingDirectory, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox Grid.Column="1" Text="{Binding Draft.WorkingDirectory, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
 
             <Grid Margin="0,10,0,0">
@@ -93,7 +93,7 @@
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
               <TextBlock Grid.Column="0" Text="启动参数" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1" Text="{Binding Arguments, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox Grid.Column="1" Text="{Binding Draft.Arguments, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
 
             <Grid Margin="0,10,0,0">
@@ -102,7 +102,7 @@
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
               <TextBlock Grid.Column="0" Text="服务 ID *" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1" Text="{Binding ServiceId, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox Grid.Column="1" Text="{Binding Draft.Id, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
             <TextBlock Margin="140,4,0,0"
                        Text="{Binding ServiceIdError}"
@@ -115,7 +115,7 @@
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
               <TextBlock Grid.Column="0" Text="显示名称 *" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1" Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox Grid.Column="1" Text="{Binding Draft.DisplayName, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
             <TextBlock Margin="140,4,0,0"
                        Text="{Binding DisplayNameError}"
@@ -129,7 +129,7 @@
               </Grid.ColumnDefinitions>
               <TextBlock Grid.Column="0" Text="描述" Style="{StaticResource FieldLabelStyle}" />
               <TextBox Grid.Column="1"
-                       Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                       Text="{Binding Draft.Description, UpdateSourceTrigger=PropertyChanged}"
                        AcceptsReturn="True"
                        MinHeight="72"
                        TextWrapping="Wrap" />
@@ -150,7 +150,7 @@
               <TextBlock Grid.Column="0" Text="启动类型" Style="{StaticResource FieldLabelStyle}" />
               <ComboBox Grid.Column="1"
                         ItemsSource="{Binding StartModeOptions}"
-                        SelectedItem="{Binding StartMode}" />
+                        SelectedItem="{Binding Draft.StartMode}" />
             </Grid>
 
             <Grid Margin="0,10,0,0">
@@ -161,7 +161,7 @@
               <TextBlock Grid.Column="0" Text="延迟启动" Style="{StaticResource FieldLabelStyle}" />
               <CheckBox Grid.Column="1"
                         Content="启用延迟自动启动"
-                        IsChecked="{Binding DelayedAutoStart}" />
+                        IsChecked="{Binding Draft.DelayedAutoStart}" />
             </Grid>
 
             <Grid Margin="0,10,0,0">
@@ -170,7 +170,7 @@
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
               <TextBlock Grid.Column="0" Text="停止超时 *" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1" Text="{Binding StopTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox Grid.Column="1" Text="{Binding Draft.StopTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
             <TextBlock Margin="140,4,0,0"
                        Text="{Binding StopTimeoutError}"
@@ -185,7 +185,29 @@
               <TextBlock Grid.Column="0" Text="安装后启动" Style="{StaticResource FieldLabelStyle}" />
               <CheckBox Grid.Column="1"
                         Content="安装后立即启动服务"
-                        IsChecked="{Binding StartAfterInstall}" />
+                        IsChecked="{Binding Draft.StartAfterInstall}" />
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="自动刷新" Style="{StaticResource FieldLabelStyle}" />
+              <CheckBox Grid.Column="1"
+                        Content="启用自动刷新配置（autoRefresh）"
+                        IsChecked="{Binding Draft.AutoRefresh}" />
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="隐藏窗口" Style="{StaticResource FieldLabelStyle}" />
+              <CheckBox Grid.Column="1"
+                        Content="隐藏程序窗口（hidewindow）"
+                        IsChecked="{Binding Draft.HideWindow}" />
             </Grid>
           </StackPanel>
         </materialDesign:Card>
@@ -203,7 +225,7 @@
               <TextBlock Grid.Column="0" Text="崩溃恢复" Style="{StaticResource FieldLabelStyle}" />
               <CheckBox Grid.Column="1"
                         Content="启用崩溃自动恢复（进程退出自动重启）"
-                        IsChecked="{Binding EnableCrashRecovery}" />
+                        IsChecked="{Binding Draft.EnableCrashRecovery}" />
             </Grid>
 
             <Grid Margin="0,10,0,0">
@@ -220,69 +242,12 @@
                 </Grid.ColumnDefinitions>
                 <TextBox Grid.Column="0"
                          materialDesign:HintAssist.Hint="重启延迟（秒）"
-                         Text="{Binding CrashRestartDelaySeconds, UpdateSourceTrigger=PropertyChanged}" />
+                         Text="{Binding Draft.CrashRestartDelaySeconds, UpdateSourceTrigger=PropertyChanged}" />
                 <TextBox Grid.Column="2"
                          materialDesign:HintAssist.Hint="最大重启次数"
-                         Text="{Binding CrashMaxRestartCount, UpdateSourceTrigger=PropertyChanged}" />
+                         Text="{Binding Draft.CrashMaxRestartCount, UpdateSourceTrigger=PropertyChanged}" />
               </Grid>
             </Grid>
-
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="卡死恢复" Style="{StaticResource FieldLabelStyle}" />
-              <CheckBox Grid.Column="1"
-                        Content="启用卡死恢复（无响应超时）"
-                        IsChecked="{Binding EnableHangRecovery}" />
-            </Grid>
-
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="卡死超时" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1"
-                       Text="{Binding HangDetectionTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
-            </Grid>
-
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="假死恢复" Style="{StaticResource FieldLabelStyle}" />
-              <CheckBox Grid.Column="1"
-                        Content="启用假死恢复（长时间异常但未退出）"
-                        IsChecked="{Binding EnablePseudoHangRecovery}" />
-            </Grid>
-
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="假死超时" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1"
-                       Text="{Binding PseudoHangTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
-            </Grid>
-
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="恢复动作" Style="{StaticResource FieldLabelStyle}" />
-              <CheckBox Grid.Column="1"
-                        Content="异常时自动执行恢复动作（重启）"
-                        IsChecked="{Binding RestartOnAnomaly}" />
-            </Grid>
-            <TextBlock Margin="140,6,0,0"
-                       Text="{Binding HangRecoveryError}"
-                       Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                       FontSize="12" />
           </StackPanel>
         </materialDesign:Card>
       </StackPanel>

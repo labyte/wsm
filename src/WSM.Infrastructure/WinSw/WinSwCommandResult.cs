@@ -11,5 +11,7 @@ public sealed class WinSwCommandResult
 
     public string StandardError { get; set; } = string.Empty;
 
+    public bool ProcessStartFailed { get; set; }
+
     public bool Success => ExitCode == 0;
 }

@@ -64,14 +64,12 @@ public sealed class WinSwHostService : IWinSwHostService
 
             LogInstallDetail("[2/5] 部署 WinSW 包装器与配置文件...");
             DeployServiceFiles(service);
-            LogInstallDetail($"  包装器: {_paths.GetServiceWrapperExePath(service.Id)}");
             LogInstallDetail($"  配置文件: {_paths.GetServiceConfigPath(service.Id)}");
             LogInstallDetail($"  目标程序: {service.ExecutablePath}");
 
-            var wrapperExe = _paths.GetServiceWrapperExePath(service.Id);
             LogInstallDetail("[3/5] 执行 WinSW install...");
-            var installResult = await _cliExecutor.ExecuteAsync(
-                    wrapperExe,
+            var installResult = await ExecuteWinSwCommandAsync(
+                    service.Id,
                     "install",
                     cancellationToken,
                     LogInstallDetail)
@@ -134,15 +132,15 @@ public sealed class WinSwHostService : IWinSwHostService
 
         try
         {
-            var wrapperExe = _paths.GetServiceWrapperExePath(serviceId);
-            if (File.Exists(wrapperExe))
+            var configFile = _paths.GetServiceConfigPath(serviceId);
+            if (File.Exists(configFile))
             {
                 if (_scmService.GetRuntimeStatus(serviceId) == ServiceRuntimeStatus.Running)
                 {
-                    await _cliExecutor.ExecuteAsync(wrapperExe, "stop", cancellationToken).ConfigureAwait(false);
+                    await ExecuteWinSwCommandAsync(serviceId, "stop", cancellationToken).ConfigureAwait(false);
                 }
 
-                var uninstallResult = await _cliExecutor.ExecuteAsync(wrapperExe, "uninstall", cancellationToken)
+                var uninstallResult = await ExecuteWinSwCommandAsync(serviceId, "uninstall", cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!uninstallResult.Success)
@@ -170,13 +168,13 @@ public sealed class WinSwHostService : IWinSwHostService
 
     public async Task<ServiceRuntimeStatus> GetStatusAsync(string serviceId, CancellationToken cancellationToken = default)
     {
-        var wrapperExe = _paths.GetServiceWrapperExePath(serviceId);
-        if (!File.Exists(wrapperExe))
+        var configFile = _paths.GetServiceConfigPath(serviceId);
+        if (!File.Exists(configFile))
         {
             return ServiceRuntimeStatus.NotInstalled;
         }
 
-        var cliResult = await _cliExecutor.ExecuteAsync(wrapperExe, "status", cancellationToken)
+        var cliResult = await ExecuteWinSwCommandAsync(serviceId, "status", cancellationToken)
             .ConfigureAwait(false);
 
         var cliStatus = WinSwCliExecutor.ParseStatusOutput(cliResult.StandardOutput);
@@ -235,14 +233,30 @@ public sealed class WinSwHostService : IWinSwHostService
 
         try
         {
-            DeployServiceFiles(service);
+            var configFile = _paths.GetServiceConfigPath(service.Id);
+            if (!File.Exists(configFile))
+            {
+                var notInstalledMessage = $"服务「{service.DisplayName}」尚未安装，无法刷新配置。";
+                LogOperation(OperationLogLevel.Error, "刷新", notInstalledMessage);
+                return OperationResult.Fail(notInstalledMessage, errorCode: "SERVICE_NOT_INSTALLED");
+            }
 
-            var wrapperExe = _paths.GetServiceWrapperExePath(service.Id);
-            var refreshResult = await _cliExecutor.ExecuteAsync(wrapperExe, "refresh", cancellationToken)
+            // 刷新仅更新配置文件，避免在服务运行时覆盖包装器导致“文件被占用”。
+            WriteServiceConfigFile(service);
+            var refreshResult = await ExecuteWinSwCommandAsync(service.Id, "refresh", cancellationToken)
                 .ConfigureAwait(false);
 
             if (!refreshResult.Success)
             {
+                if (IsRefreshCommandUnsupported(refreshResult))
+                {
+                    service.UpdatedAt = DateTime.UtcNow;
+                    await _serviceRepository.SaveAsync(service, cancellationToken).ConfigureAwait(false);
+                    var fallbackMessage = $"服务「{service.DisplayName}」配置已保存。当前 WinSW 版本不支持 refresh 命令，请重启服务使配置生效。";
+                    LogOperation(OperationLogLevel.Warning, "刷新", fallbackMessage);
+                    return OperationResult.Ok(fallbackMessage);
+                }
+
                 var message = BuildFailureMessage("刷新服务配置失败", refreshResult);
                 LogOperation(OperationLogLevel.Error, "刷新", message);
                 var failResult = OperationResult.Fail(message, errorCode: "WINSW_REFRESH_FAILED");
@@ -255,6 +269,12 @@ public sealed class WinSwHostService : IWinSwHostService
             var success = $"服务「{service.DisplayName}」配置已刷新。";
             LogOperation(OperationLogLevel.Success, "刷新", success);
             return OperationResult.Ok(success);
+        }
+        catch (IOException ioEx)
+        {
+            var message = "刷新配置失败：配置文件正在被占用，请先停止服务后重试。";
+            LogOperation(OperationLogLevel.Error, "刷新", message + " " + ioEx.Message);
+            return OperationResult.Fail(message, ioEx, "WINSW_REFRESH_FILE_IN_USE");
         }
         catch (Exception ex)
         {
@@ -274,15 +294,15 @@ public sealed class WinSwHostService : IWinSwHostService
 
         try
         {
-            var wrapperExe = _paths.GetServiceWrapperExePath(serviceId);
-            if (!File.Exists(wrapperExe))
+            var configFile = _paths.GetServiceConfigPath(serviceId);
+            if (!File.Exists(configFile))
             {
                 var message = $"服务「{serviceId}」尚未安装。";
                 LogOperation(OperationLogLevel.Error, actionName, message);
                 return OperationResult.Fail(message, errorCode: "SERVICE_NOT_INSTALLED");
             }
 
-            var result = await _cliExecutor.ExecuteAsync(wrapperExe, command, cancellationToken)
+            var result = await ExecuteWinSwCommandAsync(serviceId, command, cancellationToken)
                 .ConfigureAwait(false);
 
             if (!result.Success)
@@ -306,37 +326,50 @@ public sealed class WinSwHostService : IWinSwHostService
         }
     }
 
+    private async Task<WinSwCommandResult> ExecuteWinSwCommandAsync(
+        string serviceId,
+        string command,
+        CancellationToken cancellationToken,
+        Action<string>? onOutputLine = null)
+    {
+        var configPath = _paths.GetServiceConfigPath(serviceId);
+        var winSwExecutable = _paths.ResolveWinSwExecutablePath();
+        var args = $"{command} \"{configPath}\"";
+        var result = await _cliExecutor.ExecuteAsync(winSwExecutable, args, cancellationToken, onOutputLine)
+            .ConfigureAwait(false);
+        if (result.ProcessStartFailed)
+        {
+            result.StandardError = $"启动 WinSW 失败：{winSwExecutable}"
+                                   + Environment.NewLine
+                                   + result.StandardError;
+        }
+
+        return result;
+    }
+
     private void DeployServiceFiles(ManagedService service)
     {
         var serviceDirectory = _paths.GetServiceDirectory(service.Id);
         Directory.CreateDirectory(serviceDirectory);
         Directory.CreateDirectory(_paths.GetServiceLogsDirectory(service.Id));
 
-        var sourceWinSw = ResolveWinSwSourcePath();
-        var wrapperExe = _paths.GetServiceWrapperExePath(service.Id);
-        File.Copy(sourceWinSw, wrapperExe, overwrite: true);
+        WriteServiceConfigFile(service);
+    }
 
+    private void WriteServiceConfigFile(ManagedService service)
+    {
         var xmlBytes = _configGenerator.GenerateUtf8Bytes(service);
         File.WriteAllBytes(_paths.GetServiceConfigPath(service.Id), xmlBytes);
     }
 
-    private string ResolveWinSwSourcePath()
+    private static bool IsRefreshCommandUnsupported(WinSwCommandResult result)
     {
-        var bundled = _paths.GetBundledWinSwPath();
-        if (File.Exists(bundled))
-        {
-            return bundled;
-        }
-
-        Directory.CreateDirectory(_paths.WinSwStoreDirectory);
-        var stored = Path.Combine(_paths.WinSwStoreDirectory, "WinSW-x64.exe");
-        if (File.Exists(stored))
-        {
-            return stored;
-        }
-
-        throw new FileNotFoundException(
-            "未找到 WinSW 可执行文件。请将 WinSW-x64.exe 放入应用 winsw 目录或 %ProgramData%\\WSM\\winsw。");
+        var output = (result.StandardOutput + " " + result.StandardError).ToLowerInvariant();
+        return output.Contains("refreshcommand")
+               || output.Contains("refresh command")
+               || output.Contains("unknown command")
+               || output.Contains("unrecognized command")
+               || output.Contains("is not recognized");
     }
 
     private void LogInstallDetail(string line)

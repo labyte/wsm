@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -38,62 +39,24 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
         _snackbarService = snackbarService;
         _navigationService = navigationService;
         _adminElevation = adminElevation;
+        Draft.PropertyChanged += DraftOnPropertyChanged;
         RefreshInstallPermissionState();
+        ResetForm();
     }
 
     [ObservableProperty]
-    private string _executablePath = string.Empty;
+    private ServiceConfigDraft _draft = new();
 
-    [ObservableProperty]
-    private string _workingDirectory = string.Empty;
+    partial void OnDraftChanged(ServiceConfigDraft value)
+    {
+        if (value == null)
+        {
+            return;
+        }
 
-    [ObservableProperty]
-    private string _arguments = string.Empty;
-
-    [ObservableProperty]
-    private string _serviceId = string.Empty;
-
-    [ObservableProperty]
-    private string _displayName = string.Empty;
-
-    [ObservableProperty]
-    private string _description = string.Empty;
-
-    [ObservableProperty]
-    private ManagedServiceStartMode _startMode = ManagedServiceStartMode.Automatic;
-
-    [ObservableProperty]
-    private bool _delayedAutoStart = true;
-
-    [ObservableProperty]
-    private int _stopTimeoutSeconds = 15;
-
-    [ObservableProperty]
-    private bool _startAfterInstall = true;
-
-    [ObservableProperty]
-    private bool _enableCrashRecovery = true;
-
-    [ObservableProperty]
-    private int _crashRestartDelaySeconds = 5;
-
-    [ObservableProperty]
-    private int _crashMaxRestartCount = 3;
-
-    [ObservableProperty]
-    private bool _enableHangRecovery;
-
-    [ObservableProperty]
-    private int _hangDetectionTimeoutSeconds = 120;
-
-    [ObservableProperty]
-    private bool _enablePseudoHangRecovery;
-
-    [ObservableProperty]
-    private int _pseudoHangTimeoutSeconds = 300;
-
-    [ObservableProperty]
-    private bool _restartOnAnomaly = true;
+        value.PropertyChanged += DraftOnPropertyChanged;
+        ValidateAllFields(showSnackbar: false);
+    }
 
     [ObservableProperty]
     private bool _isInstalling;
@@ -124,23 +87,11 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
     [ObservableProperty]
     private string _stopTimeoutError = string.Empty;
 
-    [ObservableProperty]
-    private string _hangRecoveryError = string.Empty;
-
-    partial void OnExecutablePathChanged(string value) => ValidateAllFields(showSnackbar: false);
-    partial void OnServiceIdChanged(string value) => ValidateAllFields(showSnackbar: false);
-    partial void OnDisplayNameChanged(string value) => ValidateAllFields(showSnackbar: false);
-    partial void OnStopTimeoutSecondsChanged(int value) => ValidateAllFields(showSnackbar: false);
-    partial void OnEnableHangRecoveryChanged(bool value) => ValidateAllFields(showSnackbar: false);
-    partial void OnEnablePseudoHangRecoveryChanged(bool value) => ValidateAllFields(showSnackbar: false);
-    partial void OnHangDetectionTimeoutSecondsChanged(int value) => ValidateAllFields(showSnackbar: false);
-    partial void OnPseudoHangTimeoutSecondsChanged(int value) => ValidateAllFields(showSnackbar: false);
-
     public void OnNavigatedTo()
     {
         RefreshInstallPermissionState();
 
-        if (string.IsNullOrWhiteSpace(ExecutablePath))
+        if (string.IsNullOrWhiteSpace(Draft.ExecutablePath))
         {
             ResetForm();
         }
@@ -157,12 +108,12 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
 
         if (dialog.ShowDialog() == true)
         {
-            ExecutablePath = dialog.FileName;
-            WorkingDirectory = Path.GetDirectoryName(dialog.FileName) ?? string.Empty;
-            Arguments = string.Empty;
-            ServiceId = _idSuggester.SuggestFromExecutablePath(dialog.FileName);
-            DisplayName = Path.GetFileNameWithoutExtension(dialog.FileName);
-            Description = $"由 WSM 托管：{Path.GetFileName(dialog.FileName)}";
+            Draft.ExecutablePath = dialog.FileName;
+            Draft.WorkingDirectory = Path.GetDirectoryName(dialog.FileName) ?? string.Empty;
+            Draft.Arguments = string.Empty;
+            Draft.Id = _idSuggester.SuggestFromExecutablePath(dialog.FileName);
+            Draft.DisplayName = Path.GetFileNameWithoutExtension(dialog.FileName);
+            Draft.Description = $"由 WSM 托管：{Path.GetFileName(dialog.FileName)}";
             ValidateAllFields(showSnackbar: false);
         }
     }
@@ -223,43 +174,31 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
         ServiceIdError = string.Empty;
         DisplayNameError = string.Empty;
         StopTimeoutError = string.Empty;
-        HangRecoveryError = string.Empty;
 
-        if (string.IsNullOrWhiteSpace(ExecutablePath) || !File.Exists(ExecutablePath))
+        if (string.IsNullOrWhiteSpace(Draft.ExecutablePath) || !File.Exists(Draft.ExecutablePath))
         {
             ExecutablePathError = "请选择有效的可执行文件。";
         }
 
-        if (string.IsNullOrWhiteSpace(ServiceId) || !_validator.IsValidIdFormat(ServiceId))
+        if (string.IsNullOrWhiteSpace(Draft.Id) || !_validator.IsValidIdFormat(Draft.Id))
         {
             ServiceIdError = "服务 ID 必须以小写字母开头，且仅包含小写字母、数字和连字符。";
         }
 
-        if (string.IsNullOrWhiteSpace(DisplayName))
+        if (string.IsNullOrWhiteSpace(Draft.DisplayName))
         {
             DisplayNameError = "显示名称不能为空。";
         }
 
-        if (StopTimeoutSeconds <= 0)
+        if (Draft.StopTimeoutSeconds <= 0)
         {
             StopTimeoutError = "停止超时必须大于 0 秒。";
-        }
-
-        if (EnableHangRecovery && HangDetectionTimeoutSeconds <= 0)
-        {
-            HangRecoveryError = "卡死判定超时必须大于 0 秒。";
-        }
-
-        if (EnablePseudoHangRecovery && PseudoHangTimeoutSeconds <= 0)
-        {
-            HangRecoveryError = "假死判定超时必须大于 0 秒。";
         }
 
         var isValid = string.IsNullOrWhiteSpace(ExecutablePathError)
             && string.IsNullOrWhiteSpace(ServiceIdError)
             && string.IsNullOrWhiteSpace(DisplayNameError)
-            && string.IsNullOrWhiteSpace(StopTimeoutError)
-            && string.IsNullOrWhiteSpace(HangRecoveryError);
+            && string.IsNullOrWhiteSpace(StopTimeoutError);
 
         if (!isValid && showSnackbar)
         {
@@ -268,8 +207,7 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
                 ExecutablePathError,
                 ServiceIdError,
                 DisplayNameError,
-                StopTimeoutError,
-                HangRecoveryError
+                StopTimeoutError
             }.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
 
             if (!string.IsNullOrWhiteSpace(firstError))
@@ -296,83 +234,28 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
 
     private ManagedService BuildManagedService()
     {
-        return new ManagedService
+        var service = new ManagedService
         {
-            Id = ServiceId.Trim(),
-            DisplayName = DisplayName.Trim(),
-            Description = Description?.Trim() ?? string.Empty,
-            ExecutablePath = ExecutablePath.Trim(),
-            WorkingDirectory = WorkingDirectory.Trim(),
-            Arguments = Arguments?.Trim() ?? string.Empty,
-            StartMode = StartMode,
-            DelayedAutoStart = DelayedAutoStart,
-            StopTimeoutSeconds = StopTimeoutSeconds,
-            StartAfterInstall = StartAfterInstall,
-            FailurePolicy = BuildFailurePolicy(),
-            RecoverySettings = new ServiceRecoverySettings
-            {
-                EnableCrashRecovery = EnableCrashRecovery,
-                CrashRestartDelaySeconds = CrashRestartDelaySeconds,
-                CrashMaxRestartCount = CrashMaxRestartCount,
-                EnableHangRecovery = EnableHangRecovery,
-                HangDetectionTimeoutSeconds = HangDetectionTimeoutSeconds,
-                EnablePseudoHangRecovery = EnablePseudoHangRecovery,
-                PseudoHangTimeoutSeconds = PseudoHangTimeoutSeconds,
-                RestartOnAnomaly = RestartOnAnomaly
-            },
+            Id = Draft.Id.Trim(),
             LogPolicy = LogPolicy.CreateDefault()
         };
-    }
 
-    private FailurePolicy BuildFailurePolicy()
-    {
-        if (!EnableCrashRecovery)
-        {
-            return FailurePolicy.CreateFromTemplate(FailurePolicyTemplate.MonitorOnly);
-        }
-
-        var actions = new System.Collections.Generic.List<FailureActionEntry>();
-        for (var i = 0; i < Math.Max(1, CrashMaxRestartCount); i++)
-        {
-            actions.Add(new FailureActionEntry
-            {
-                Action = FailureActionType.Restart,
-                Delay = $"{Math.Max(1, CrashRestartDelaySeconds)} sec"
-            });
-        }
-
-        actions.Add(new FailureActionEntry { Action = FailureActionType.None, Delay = "0 sec" });
-        return new FailurePolicy
-        {
-            ResetFailurePeriod = "1 hour",
-            Actions = actions
-        };
+        Draft.ApplyTo(service);
+        return service;
     }
 
     private void ResetForm()
     {
-        ExecutablePath = string.Empty;
-        WorkingDirectory = string.Empty;
-        Arguments = string.Empty;
-        ServiceId = string.Empty;
-        DisplayName = string.Empty;
-        Description = string.Empty;
-        StartMode = ManagedServiceStartMode.Automatic;
-        DelayedAutoStart = true;
-        StopTimeoutSeconds = 15;
-        StartAfterInstall = true;
-        EnableCrashRecovery = true;
-        CrashRestartDelaySeconds = 5;
-        CrashMaxRestartCount = 3;
-        EnableHangRecovery = false;
-        HangDetectionTimeoutSeconds = 120;
-        EnablePseudoHangRecovery = false;
-        PseudoHangTimeoutSeconds = 300;
-        RestartOnAnomaly = true;
+        Draft.PropertyChanged -= DraftOnPropertyChanged;
+        Draft = new ServiceConfigDraft();
         ExecutablePathError = string.Empty;
         ServiceIdError = string.Empty;
         DisplayNameError = string.Empty;
         StopTimeoutError = string.Empty;
-        HangRecoveryError = string.Empty;
+    }
+
+    private void DraftOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        ValidateAllFields(showSnackbar: false);
     }
 }

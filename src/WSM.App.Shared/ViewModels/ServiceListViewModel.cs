@@ -12,6 +12,7 @@ using CommunityToolkit.Mvvm.Input;
 using MaterialDesignThemes.Wpf;
 using WSM.App.Shared.Services;
 using WSM.Core.Interfaces;
+using WSM.Core.Models;
 using WSM.Infrastructure.Paths;
 
 namespace WSM.App.Shared.ViewModels;
@@ -139,20 +140,57 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
     }
 
     [RelayCommand]
-    private void OpenConfig(ServiceListItemViewModel? item)
+    private async Task OpenConfigAsync(ServiceListItemViewModel? item)
     {
         if (item == null)
         {
             return;
         }
 
-        if (!File.Exists(item.ConfigFilePath))
+        var service = await _serviceRepository.GetByIdAsync(item.ServiceId).ConfigureAwait(true);
+        if (service == null)
         {
-            _snackbarService.ShowWarning("配置文件不存在，请先安装服务。");
+            _snackbarService.ShowWarning("未找到服务配置记录。");
             return;
         }
 
-        OpenPath(item.ConfigFilePath);
+        var dialogState = BuildConfigDialogState(service);
+        var dialogResult = await ShowConfigDialogAsync(dialogState).ConfigureAwait(true);
+
+        if (dialogResult == ConfigDialogAction.Uninstall)
+        {
+            await UninstallAsync(item).ConfigureAwait(true);
+            return;
+        }
+
+        if (dialogResult != ConfigDialogAction.Save)
+        {
+            return;
+        }
+
+        if (!TryApplyConfigEdits(service, dialogState, out var validationError))
+        {
+            _snackbarService.ShowWarning(validationError);
+            return;
+        }
+
+        item.IsBusy = true;
+        try
+        {
+            var refreshResult = await _winSwHostService.RefreshAsync(service).ConfigureAwait(true);
+            if (!refreshResult.Success)
+            {
+                _snackbarService.ShowError(refreshResult.Message);
+                return;
+            }
+
+            _snackbarService.ShowSuccess("配置已保存并刷新。通常无需重装服务；部分项可能需要重启服务后生效。");
+            await RefreshAsync().ConfigureAwait(true);
+        }
+        finally
+        {
+            item.IsBusy = false;
+        }
     }
 
     [RelayCommand]
@@ -280,6 +318,181 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
 
         var result = await DialogHost.Show(contentPanel, "RootDialogHost").ConfigureAwait(true);
         return result is bool confirmed && confirmed;
+    }
+
+    private static ServiceConfigDraft BuildConfigDialogState(ManagedService service)
+    {
+        return ServiceConfigDraft.FromManagedService(service);
+    }
+
+    private static bool TryApplyConfigEdits(
+        ManagedService service,
+        ServiceConfigDraft dialogState,
+        out string validationError)
+    {
+        if (!dialogState.TryValidate(out validationError))
+        {
+            return false;
+        }
+
+        dialogState.ApplyTo(service);
+        return true;
+    }
+
+    private static async Task<ConfigDialogAction> ShowConfigDialogAsync(ServiceConfigDraft state)
+    {
+        var container = new StackPanel
+        {
+            Margin = new Thickness(24),
+            MinWidth = 520
+        };
+
+        container.Children.Add(new TextBlock
+        {
+            Text = $"服务配置 - {state.Id}",
+            FontSize = 18,
+            FontWeight = FontWeights.Medium
+        });
+
+        container.Children.Add(new TextBlock
+        {
+            Text = "保存后会执行配置刷新（refresh），通常无需重新安装；部分参数可能需要重启服务后生效。",
+            Margin = new Thickness(0, 8, 0, 12),
+            Opacity = 0.78,
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        container.Children.Add(CreateLabeledTextBox("显示名称", state.DisplayName, value => state.DisplayName = value));
+        container.Children.Add(CreateLabeledTextBox("描述", state.Description, value => state.Description = value));
+        container.Children.Add(CreateLabeledTextBox("可执行路径", state.ExecutablePath, value => state.ExecutablePath = value));
+        container.Children.Add(CreateLabeledTextBox("工作目录", state.WorkingDirectory, value => state.WorkingDirectory = value));
+        container.Children.Add(CreateLabeledTextBox("启动参数", state.Arguments, value => state.Arguments = value));
+        container.Children.Add(CreateLabeledComboBox("启动类型", state.StartMode, value => state.StartMode = value));
+        container.Children.Add(CreateLabeledCheckBox("启用延迟自动启动", state.DelayedAutoStart, value => state.DelayedAutoStart = value));
+        container.Children.Add(CreateLabeledCheckBox("启用自动刷新配置（autoRefresh）", state.AutoRefresh, value => state.AutoRefresh = value));
+        container.Children.Add(CreateLabeledCheckBox("隐藏程序窗口（hidewindow）", state.HideWindow, value => state.HideWindow = value));
+        container.Children.Add(CreateLabeledIntTextBox("停止超时（秒）", state.StopTimeoutSeconds, value => state.StopTimeoutSeconds = value));
+        container.Children.Add(CreateLabeledCheckBox("安装后自动启动", state.StartAfterInstall, value => state.StartAfterInstall = value));
+        container.Children.Add(new TextBlock
+        {
+            Text = "自动恢复设置",
+            Margin = new Thickness(0, 8, 0, 6),
+            FontWeight = FontWeights.Medium
+        });
+        container.Children.Add(CreateLabeledCheckBox("启用崩溃自动恢复", state.EnableCrashRecovery, value => state.EnableCrashRecovery = value));
+        container.Children.Add(CreateLabeledIntTextBox("崩溃重启延迟（秒）", state.CrashRestartDelaySeconds, value => state.CrashRestartDelaySeconds = value));
+        container.Children.Add(CreateLabeledIntTextBox("最大重启次数", state.CrashMaxRestartCount, value => state.CrashMaxRestartCount = value));
+
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 16, 0, 0)
+        };
+
+        var cancelButton = new Button
+        {
+            Content = "取消",
+            MinWidth = 88,
+            Margin = new Thickness(0, 0, 8, 0),
+            Command = DialogHost.CloseDialogCommand,
+            CommandParameter = ConfigDialogAction.Cancel
+        };
+        cancelButton.SetResourceReference(FrameworkElement.StyleProperty, "MaterialDesignFlatButton");
+
+        var uninstallButton = new Button
+        {
+            Content = "卸载服务",
+            MinWidth = 88,
+            Margin = new Thickness(0, 0, 8, 0),
+            Command = DialogHost.CloseDialogCommand,
+            CommandParameter = ConfigDialogAction.Uninstall
+        };
+        uninstallButton.SetResourceReference(FrameworkElement.StyleProperty, "MaterialDesignFlatButton");
+        uninstallButton.SetResourceReference(Control.ForegroundProperty, "MaterialDesignValidationErrorBrush");
+
+        var saveButton = new Button
+        {
+            Content = "保存并应用",
+            MinWidth = 96,
+            Command = DialogHost.CloseDialogCommand,
+            CommandParameter = ConfigDialogAction.Save
+        };
+        saveButton.SetResourceReference(FrameworkElement.StyleProperty, "MaterialDesignFlatButton");
+
+        actions.Children.Add(cancelButton);
+        actions.Children.Add(uninstallButton);
+        actions.Children.Add(saveButton);
+        container.Children.Add(actions);
+
+        var result = await DialogHost.Show(container, "RootDialogHost").ConfigureAwait(true);
+        return result is ConfigDialogAction action ? action : ConfigDialogAction.Cancel;
+    }
+
+    private static FrameworkElement CreateLabeledTextBox(string label, string initialValue, System.Action<string> onChanged)
+    {
+        var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
+        panel.Children.Add(new TextBlock { Text = label, Opacity = 0.78 });
+        var box = new TextBox { Text = initialValue };
+        box.TextChanged += (_, _) => onChanged(box.Text ?? string.Empty);
+        panel.Children.Add(box);
+        return panel;
+    }
+
+    private static FrameworkElement CreateLabeledIntTextBox(string label, int initialValue, System.Action<int> onChanged)
+    {
+        return CreateLabeledTextBox(label, initialValue.ToString(), value =>
+        {
+            if (int.TryParse(value, out var parsed))
+            {
+                onChanged(parsed);
+            }
+        });
+    }
+
+    private static FrameworkElement CreateLabeledCheckBox(string label, bool initialValue, System.Action<bool> onChanged)
+    {
+        var checkBox = new CheckBox
+        {
+            Content = label,
+            IsChecked = initialValue,
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+        checkBox.Checked += (_, _) => onChanged(true);
+        checkBox.Unchecked += (_, _) => onChanged(false);
+        return checkBox;
+    }
+
+    private static FrameworkElement CreateLabeledComboBox(
+        string label,
+        ManagedServiceStartMode initialValue,
+        System.Action<ManagedServiceStartMode> onChanged)
+    {
+        var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
+        panel.Children.Add(new TextBlock { Text = label, Opacity = 0.78 });
+
+        var combo = new ComboBox
+        {
+            ItemsSource = System.Enum.GetValues(typeof(ManagedServiceStartMode)),
+            SelectedItem = initialValue
+        };
+        combo.SelectionChanged += (_, _) =>
+        {
+            if (combo.SelectedItem is ManagedServiceStartMode selected)
+            {
+                onChanged(selected);
+            }
+        };
+
+        panel.Children.Add(combo);
+        return panel;
+    }
+
+    private enum ConfigDialogAction
+    {
+        Cancel,
+        Save,
+        Uninstall
     }
 
     private async Task ExecuteServiceActionAsync(

@@ -9,12 +9,20 @@ namespace WSM.Infrastructure.Paths;
 /// </summary>
 public sealed class WsmPaths
 {
+    public const string WinSwToolModeGlobal = "Global";
+    public const string WinSwToolModeBundledX64 = "BundledX64";
+    public const string WinSwToolModeBundledX86 = "BundledX86";
+    public const string WinSwToolModeBundledNet461 = "BundledNet461";
+    public const string WinSwToolModeCustom = "Custom";
+
     private readonly object _sync = new object();
     private string _dataRoot = string.Empty;
     private string _winSwStoreDirectory = string.Empty;
     private string _servicesDirectory = string.Empty;
     private string _databaseDirectory = string.Empty;
     private string _databasePath = string.Empty;
+    private string _winSwToolMode = WinSwToolModeBundledX64;
+    private string _customWinSwPath = string.Empty;
 
     public WsmPaths()
     {
@@ -24,6 +32,17 @@ public sealed class WsmPaths
         var configuredRoot = LoadConfiguredDataRoot();
         var initialRoot = string.IsNullOrWhiteSpace(configuredRoot) ? defaultRoot : configuredRoot!;
         UpdateDerivedPaths(initialRoot);
+
+        var configuredWinSw = LoadConfiguredWinSwTool();
+        if (!string.IsNullOrWhiteSpace(configuredWinSw.Mode))
+        {
+            _winSwToolMode = configuredWinSw.Mode!;
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuredWinSw.CustomPath))
+        {
+            _customWinSwPath = configuredWinSw.CustomPath!;
+        }
     }
 
     /// <summary>
@@ -39,13 +58,50 @@ public sealed class WsmPaths
 
     public string DatabasePath => _databasePath;
 
+    public string WinSwToolMode => _winSwToolMode;
+
+    public string CustomWinSwPath => _customWinSwPath;
+
     /// <summary>
     /// 应用目录内的 WinSW 源文件（构建时复制到输出目录）。
     /// </summary>
     public string GetBundledWinSwPath(bool preferX64 = true)
     {
-        var fileName = preferX64 ? "WinSW-x64.exe" : "WinSW-x86.exe";
-        return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "winsw", fileName);
+        var winswDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "winsw");
+        var preferredPath = Path.Combine(winswDirectory, preferX64 ? "WinSW-x64.exe" : "WinSW-x86.exe");
+        if (File.Exists(preferredPath))
+        {
+            return preferredPath;
+        }
+
+        var net461Path = Path.Combine(winswDirectory, "WinSW-net461.exe");
+        if (File.Exists(net461Path))
+        {
+            return net461Path;
+        }
+
+        var fallbackPath = Path.Combine(winswDirectory, preferX64 ? "WinSW-x86.exe" : "WinSW-x64.exe");
+        return fallbackPath;
+    }
+
+    /// <summary>
+    /// 解析当前生效的 WinSW 可执行路径。
+    /// </summary>
+    public string ResolveWinSwExecutablePath()
+    {
+        switch (WinSwToolMode)
+        {
+            case WinSwToolModeGlobal:
+                return "winsw";
+            case WinSwToolModeBundledX86:
+                return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "winsw", "WinSW-x86.exe");
+            case WinSwToolModeBundledNet461:
+                return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "winsw", "WinSW-net461.exe");
+            case WinSwToolModeCustom:
+                return string.IsNullOrWhiteSpace(CustomWinSwPath) ? "winsw" : CustomWinSwPath;
+            default:
+                return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "winsw", "WinSW-x64.exe");
+        }
     }
 
     /// <summary>
@@ -116,6 +172,38 @@ public sealed class WsmPaths
         return true;
     }
 
+    /// <summary>
+    /// 设置 WinSW 执行模式与自定义路径。
+    /// </summary>
+    public bool SetWinSwTool(string toolMode, string? customPath)
+    {
+        if (string.IsNullOrWhiteSpace(toolMode))
+        {
+            throw new ArgumentException("WinSW 执行模式不能为空。", nameof(toolMode));
+        }
+
+        var normalizedMode = toolMode.Trim();
+        var normalizedCustomPath = string.IsNullOrWhiteSpace(customPath)
+            ? string.Empty
+            : Path.GetFullPath(customPath!.Trim());
+
+        lock (_sync)
+        {
+            var unchanged = string.Equals(_winSwToolMode, normalizedMode, StringComparison.Ordinal)
+                            && string.Equals(_customWinSwPath, normalizedCustomPath, StringComparison.OrdinalIgnoreCase);
+            if (unchanged)
+            {
+                return false;
+            }
+
+            _winSwToolMode = normalizedMode;
+            _customWinSwPath = normalizedCustomPath;
+            SaveConfiguredWinSwTool(_winSwToolMode, _customWinSwPath);
+        }
+
+        return true;
+    }
+
     private void UpdateDerivedPaths(string dataRoot)
     {
         _dataRoot = dataRoot;
@@ -134,6 +222,15 @@ public sealed class WsmPaths
         return Path.Combine(appData, "data-root.txt");
     }
 
+    private static string GetWinSwConfigFilePath()
+    {
+        var appData = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "WSM");
+        Directory.CreateDirectory(appData);
+        return Path.Combine(appData, "winsw-tool.txt");
+    }
+
     private static string? LoadConfiguredDataRoot()
     {
         var configPath = GetConfigFilePath();
@@ -150,5 +247,29 @@ public sealed class WsmPaths
     {
         var configPath = GetConfigFilePath();
         File.WriteAllText(configPath, dataRoot);
+    }
+
+    private static (string? Mode, string? CustomPath) LoadConfiguredWinSwTool()
+    {
+        var configPath = GetWinSwConfigFilePath();
+        if (!File.Exists(configPath))
+        {
+            return (null, null);
+        }
+
+        var lines = File.ReadAllLines(configPath);
+        var mode = lines.Length > 0 ? lines[0].Trim() : null;
+        var customPath = lines.Length > 1 ? lines[1].Trim() : null;
+        return (mode, customPath);
+    }
+
+    private static void SaveConfiguredWinSwTool(string mode, string customPath)
+    {
+        var configPath = GetWinSwConfigFilePath();
+        File.WriteAllLines(configPath, new[]
+        {
+            mode ?? string.Empty,
+            customPath ?? string.Empty
+        });
     }
 }

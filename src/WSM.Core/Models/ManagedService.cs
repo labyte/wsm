@@ -27,6 +27,16 @@ public sealed class ManagedService
 
     public bool DelayedAutoStart { get; set; } = true;
 
+    /// <summary>
+    /// 是否启用 WinSW 自动刷新配置。
+    /// </summary>
+    public bool AutoRefresh { get; set; } = true;
+
+    /// <summary>
+    /// 是否隐藏被托管程序窗口。
+    /// </summary>
+    public bool HideWindow { get; set; }
+
     public IList<string> Dependencies { get; set; } = new List<string>();
 
     public int StopTimeoutSeconds { get; set; } = 15;

@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\..\assets\winsw\WinSW-net461.exe" Link="winsw\WinSW-net461.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\assets\winsw\WinSW-net461.exe')" />
     <None Include="..\..\assets\winsw\WinSW-x64.exe" Link="winsw\WinSW-x64.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\assets\winsw\WinSW-x64.exe')" />
     <None Include="..\..\assets\winsw\WinSW-x86.exe" Link="winsw\WinSW-x86.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\assets\winsw\WinSW-x86.exe')" />
   </ItemGroup>

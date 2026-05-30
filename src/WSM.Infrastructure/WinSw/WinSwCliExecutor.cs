@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.ComponentModel;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -45,12 +46,34 @@ public sealed class WinSwCliExecutor
 
         using var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
 
-        if (!process.Start())
+        try
+        {
+            if (!process.Start())
+            {
+                return new WinSwCommandResult
+                {
+                    ExitCode = -1,
+                    StandardError = "无法启动 WinSW 进程。",
+                    ProcessStartFailed = true
+                };
+            }
+        }
+        catch (Win32Exception ex)
         {
             return new WinSwCommandResult
             {
                 ExitCode = -1,
-                StandardError = "无法启动 WinSW 进程。"
+                StandardError = "启动 WinSW 进程失败：" + ex.Message,
+                ProcessStartFailed = true
+            };
+        }
+        catch (Exception ex)
+        {
+            return new WinSwCommandResult
+            {
+                ExitCode = -1,
+                StandardError = "执行 WinSW 命令时发生异常：" + ex.Message,
+                ProcessStartFailed = true
             };
         }
 
@@ -85,7 +108,8 @@ public sealed class WinSwCliExecutor
         {
             ExitCode = process.ExitCode,
             StandardOutput = stdout,
-            StandardError = stderr
+            StandardError = stderr,
+            ProcessStartFailed = false
         };
     }
 
