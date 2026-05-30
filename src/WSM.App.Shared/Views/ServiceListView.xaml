@@ -196,7 +196,7 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTemplateColumn Header="操作" Width="auto" IsReadOnly="True" HeaderStyle="{StaticResource CenteredHeaderStyle}">
+          <DataGridTemplateColumn Header="操作" Width="auto" IsReadOnly="True" >
             <DataGridTemplateColumn.HeaderTemplate>
               <DataTemplate>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" >
@@ -216,9 +216,9 @@
             </DataGridTemplateColumn.HeaderTemplate>
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                   <Button Style="{StaticResource ServiceActionIconButtonStyle}"
-                          Margin="0,0,8,0"
+                          Margin="6,0,8,0"
                           ToolTip="启动"
                           Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                           CommandParameter="{Binding}"
@@ -229,13 +229,22 @@
                                              Height="22" />
                   </Button>
                   <Button Style="{StaticResource ServiceActionIconButtonStyle}"
-                          Margin="0,0,8,0"
+                          Margin="8,0,8,0"
                           ToolTip="停止"
                           Command="{Binding DataContext.StopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                           CommandParameter="{Binding}"
                           Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <materialDesign:PackIcon Kind="StopCircleOutline"
                                              Foreground="#B71C1C"
+                                             Width="22"
+                                             Height="22" />
+                  </Button>
+                  <Button Style="{StaticResource ServiceActionIconButtonStyle}"
+                          Margin="0,0,8,0"
+                          ToolTip="重启"
+                          Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                          CommandParameter="{Binding}">
+                    <materialDesign:PackIcon Kind="Restart"
                                              Width="22"
                                              Height="22" />
                   </Button>
@@ -254,31 +263,104 @@
                     <StackPanel MinWidth="160">
                       <Button Style="{StaticResource MaterialDesignFlatButton}"
                               HorizontalContentAlignment="Left"
+                              Foreground="#2E7D32"
                               Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                               CommandParameter="{Binding}"
-                              Content="启动" />
+                              Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                          <materialDesign:PackIcon Kind="PlayCircleOutline"
+                                                   Width="18"
+                                                   Height="18"
+                                                   Margin="0,0,8,0"
+                                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                          <TextBlock Text="启动"
+                                     VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
                       <Button Style="{StaticResource MaterialDesignFlatButton}"
                               HorizontalContentAlignment="Left"
+                              Foreground="#B71C1C"
                               Command="{Binding DataContext.StopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                               CommandParameter="{Binding}"
-                              Content="停止" />
+                              Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                          <materialDesign:PackIcon Kind="StopCircleOutline"
+                                                   Width="18"
+                                                   Height="18"
+                                                   Margin="0,0,8,0"
+                                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                          <TextBlock Text="停止"
+                                     VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                      <Button Style="{StaticResource MaterialDesignFlatButton}"
+                              HorizontalContentAlignment="Left"
+                              Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              CommandParameter="{Binding}">
+                        <StackPanel Orientation="Horizontal">
+                          <materialDesign:PackIcon Kind="Restart"
+                                                   Width="18"
+                                                   Height="18"
+                                                   Margin="0,0,8,0" />
+                          <TextBlock Text="重启"
+                                     VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                      <Button Style="{StaticResource MaterialDesignFlatButton}"
+                              HorizontalContentAlignment="Left"
+                              Command="{Binding DataContext.OpenConsoleLogsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              CommandParameter="{Binding}">
+                        <StackPanel Orientation="Horizontal">
+                          <materialDesign:PackIcon Kind="TextBoxSearchOutline"
+                                                   Width="18"
+                                                   Height="18"
+                                                   Margin="0,0,8,0" />
+                          <TextBlock Text="日志"
+                                     VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
                       <Button Style="{StaticResource MaterialDesignFlatButton}"
                               HorizontalContentAlignment="Left"
                               Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
                               Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                              CommandParameter="{Binding}"
-                              Content="卸载" />
+                              CommandParameter="{Binding}">
+                        <StackPanel Orientation="Horizontal">
+                          <materialDesign:PackIcon Kind="TrashCanOutline"
+                                                   Width="18"
+                                                   Height="18"
+                                                   Margin="0,0,8,0"
+                                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                          <TextBlock Text="卸载"
+                                     VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
                       <Separator Margin="0,4" />
                       <Button Style="{StaticResource MaterialDesignFlatButton}"
                               HorizontalContentAlignment="Left"
                               Command="{Binding DataContext.OpenConfigCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                              CommandParameter="{Binding}"
-                              Content="配置" />
+                              CommandParameter="{Binding}">
+                        <StackPanel Orientation="Horizontal">
+                          <materialDesign:PackIcon Kind="CogOutline"
+                                                   Width="18"
+                                                   Height="18"
+                                                   Margin="0,0,8,0" />
+                          <TextBlock Text="配置"
+                                     VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
                       <Button Style="{StaticResource MaterialDesignFlatButton}"
                               HorizontalContentAlignment="Left"
                               Command="{Binding DataContext.OpenProgramDirectoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                              CommandParameter="{Binding}"
-                              Content="目录" />
+                              CommandParameter="{Binding}">
+                        <StackPanel Orientation="Horizontal">
+                          <materialDesign:PackIcon Kind="FolderOutline"
+                                                   Width="18"
+                                                   Height="18"
+                                                   Margin="0,0,8,0" />
+                          <TextBlock Text="目录"
+                                     VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
                     </StackPanel>
                   </materialDesign:PopupBox>
                 </StackPanel>

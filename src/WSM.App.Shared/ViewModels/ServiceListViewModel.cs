@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MaterialDesignThemes.Wpf;
+using WSM.App.Shared.Navigation;
 using WSM.App.Shared.Services;
 using WSM.Core.Interfaces;
 using WSM.Core.Models;
@@ -26,18 +27,24 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
     private readonly IWinSwHostService _winSwHostService;
     private readonly ISnackbarService _snackbarService;
     private readonly WsmPaths _paths;
+    private readonly INavigationService _navigationService;
+    private readonly ServiceConsoleViewModel _serviceConsoleViewModel;
     private bool _isUpdatingSelection;
 
     public ServiceListViewModel(
         IServiceRepository serviceRepository,
         IWinSwHostService winSwHostService,
         ISnackbarService snackbarService,
-        WsmPaths paths)
+        WsmPaths paths,
+        INavigationService navigationService,
+        ServiceConsoleViewModel serviceConsoleViewModel)
     {
         _serviceRepository = serviceRepository;
         _winSwHostService = winSwHostService;
         _snackbarService = snackbarService;
         _paths = paths;
+        _navigationService = navigationService;
+        _serviceConsoleViewModel = serviceConsoleViewModel;
         Services = new ObservableCollection<ServiceListItemViewModel>();
     }
 
@@ -137,6 +144,35 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
     private async Task RestartAsync(ServiceListItemViewModel? item)
     {
         await ExecuteServiceActionAsync(item, id => _winSwHostService.RestartAsync(id)).ConfigureAwait(true);
+    }
+
+    [RelayCommand]
+    private async Task ToggleServiceStateAsync(ServiceListItemViewModel? item)
+    {
+        if (item == null)
+        {
+            return;
+        }
+
+        if (item.IsRunning)
+        {
+            await StopAsync(item).ConfigureAwait(true);
+            return;
+        }
+
+        await StartAsync(item).ConfigureAwait(true);
+    }
+
+    [RelayCommand]
+    private void OpenConsoleLogs(ServiceListItemViewModel? item)
+    {
+        if (item == null)
+        {
+            return;
+        }
+
+        _serviceConsoleViewModel.FocusService(item.ServiceId);
+        _navigationService.NavigateTo(AppPage.ServiceConsole);
     }
 
     [RelayCommand]

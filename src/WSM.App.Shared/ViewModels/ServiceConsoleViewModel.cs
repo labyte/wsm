@@ -21,6 +21,7 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
     private readonly ServiceLogReader _logReader;
     private readonly ConsoleLogHelper _consoleLogHelper;
     private readonly DispatcherTimer _refreshTimer;
+    private string? _pendingServiceId;
 
     public ServiceConsoleViewModel(
         IServiceRepository serviceRepository,
@@ -60,6 +61,16 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
         _ = LoadServicesAsync();
         _ = RefreshAsync();
         _refreshTimer.Start();
+    }
+
+    /// <summary>
+    /// 聚焦到指定服务日志；传 null 时回到全部服务视图。
+    /// </summary>
+    public void FocusService(string? serviceId)
+    {
+        _pendingServiceId = string.IsNullOrWhiteSpace(serviceId) ? null : serviceId;
+        TryApplyPendingServiceSelection();
+        _ = RefreshAsync();
     }
 
     [RelayCommand]
@@ -110,7 +121,7 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
     private async Task LoadServicesAsync()
     {
         var services = await _serviceRepository.GetAllAsync().ConfigureAwait(true);
-        var currentId = SelectedService?.ServiceId;
+        var currentId = _pendingServiceId ?? SelectedService?.ServiceId;
 
         ServiceOptions.Clear();
         ServiceOptions.Add(ServiceConsoleOption.All);
@@ -122,6 +133,23 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
 
         SelectedService = ServiceOptions.FirstOrDefault(x => x.ServiceId == currentId)
             ?? ServiceConsoleOption.All;
+
+        _pendingServiceId = null;
+    }
+
+    private void TryApplyPendingServiceSelection()
+    {
+        if (_pendingServiceId == null)
+        {
+            SelectedService = ServiceConsoleOption.All;
+            return;
+        }
+
+        var matched = ServiceOptions.FirstOrDefault(x => string.Equals(x.ServiceId, _pendingServiceId, StringComparison.OrdinalIgnoreCase));
+        if (matched != null)
+        {
+            SelectedService = matched;
+        }
     }
 
     private System.Collections.Generic.List<string> ResolveTargetServiceIds()
