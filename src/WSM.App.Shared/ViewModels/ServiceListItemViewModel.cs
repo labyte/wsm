@@ -52,6 +52,9 @@ public partial class ServiceListItemViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
+    [ObservableProperty]
+    private bool _isConfirmingUninstall;
+
     public void SetConfigFilePath(string path)
     {
         ConfigFilePath = path;

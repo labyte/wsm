@@ -38,6 +38,7 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
         _snackbarService = snackbarService;
         _navigationService = navigationService;
         _adminElevation = adminElevation;
+        RefreshInstallPermissionState();
     }
 
     [ObservableProperty]
@@ -97,6 +98,18 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
     [ObservableProperty]
     private bool _isInstalling;
 
+    [ObservableProperty]
+    private bool _canInstallService;
+
+    [ObservableProperty]
+    private string _installServiceToolTip = string.Empty;
+
+    [ObservableProperty]
+    private bool _showInstallPermissionHint;
+
+    [ObservableProperty]
+    private string _installPermissionHintText = string.Empty;
+
     public Array StartModeOptions => Enum.GetValues(typeof(ManagedServiceStartMode));
 
     [ObservableProperty]
@@ -125,6 +138,8 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
 
     public void OnNavigatedTo()
     {
+        RefreshInstallPermissionState();
+
         if (string.IsNullOrWhiteSpace(ExecutablePath))
         {
             ResetForm();
@@ -155,6 +170,13 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
     [RelayCommand]
     private async Task InstallAsync()
     {
+        RefreshInstallPermissionState();
+        if (!CanInstallService)
+        {
+            _snackbarService.ShowError("安装服务需要管理员权限。请先在设置中点击“以管理员身份重启”，再重新执行安装。");
+            return;
+        }
+
         if (!ValidateAllFields(showSnackbar: true))
         {
             return;
@@ -175,20 +197,6 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
         IsInstalling = true;
         _navigationService.NavigateTo(AppPage.Logs);
 
-        if (!_adminElevation.IsRunningAsAdministrator)
-        {
-            _snackbarService.ShowWarning("需要管理员权限，正在请求 UAC 提权...");
-            if (_adminElevation.TryRestartAsAdministrator())
-            {
-                IsInstalling = false;
-                return;
-            }
-
-            _snackbarService.ShowError("无法提权。请直接运行 WSM.exe（会自动弹出 UAC），或在设置中点击「以管理员身份重启」。");
-            IsInstalling = false;
-            return;
-        }
-
         try
         {
             var result = await _winSwHostService.InstallAsync(service).ConfigureAwait(true);
@@ -201,10 +209,6 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
             else
             {
                 _snackbarService.ShowError(result.Message);
-                if (result.ErrorCode == "ADMIN_REQUIRED" && _adminElevation.TryRestartAsAdministrator())
-                {
-                    return;
-                }
             }
         }
         finally
@@ -275,6 +279,19 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
         }
 
         return isValid;
+    }
+
+    private void RefreshInstallPermissionState()
+    {
+        var isAdministrator = _adminElevation.IsRunningAsAdministrator;
+        CanInstallService = isAdministrator;
+        InstallServiceToolTip = isAdministrator
+            ? "安装服务"
+            : "需要管理员权限。请先在设置中点击“以管理员身份重启”。";
+        ShowInstallPermissionHint = !isAdministrator;
+        InstallPermissionHintText = isAdministrator
+            ? string.Empty
+            : "当前为非管理员模式，安装服务功能已禁用。请先在设置中点击“以管理员身份重启”。";
     }
 
     private ManagedService BuildManagedService()
