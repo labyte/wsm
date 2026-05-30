@@ -42,6 +42,7 @@ public sealed class AppHost
     {
         services.AddSingleton(_ => new SnackbarMessageQueue(TimeSpan.FromSeconds(4)));
         services.AddSingleton<ISnackbarService, SnackbarService>();
+        services.AddSingleton<IThemePreferenceStore, ThemePreferenceStore>();
         services.AddSingleton<ITrayIconService, TrayIconService>();
         services.AddSingleton<AdminElevationService>();
         services.AddSingleton<ConsoleLogHelper>();

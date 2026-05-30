@@ -2,10 +2,38 @@
   <PropertyGroup>
     <Company>WSM</Company>
     <Product>Windows Service Manager</Product>
-    <Version>0.1.0</Version>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <GitCommitCount>0</GitCommitCount>
+    <GitShortSha>nogit</GitShortSha>
+    <Version>$(VersionPrefix).$(GitCommitCount)</Version>
+    <InformationalVersion>$(Version)+$(GitShortSha)</InformationalVersion>
     <Authors>WSM</Authors>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
+
+  <!-- 构建时读取 Git 提交信息，实现提交级自动版本号 -->
+  <Target Name="SetGitVersionMetadata" BeforeTargets="GenerateAssemblyInfo" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="git rev-list --count HEAD"
+          ConsoleToMSBuild="true"
+          IgnoreExitCode="true"
+          StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitCountOutput" />
+    </Exec>
+
+    <Exec Command="git rev-parse --short HEAD"
+          ConsoleToMSBuild="true"
+          IgnoreExitCode="true"
+          StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitShortShaOutput" />
+    </Exec>
+
+    <PropertyGroup>
+      <GitCommitCount Condition="'$(GitCommitCountOutput)' != ''">$([System.String]::Copy('$(GitCommitCountOutput)').Trim())</GitCommitCount>
+      <GitShortSha Condition="'$(GitShortShaOutput)' != ''">$([System.String]::Copy('$(GitShortShaOutput)').Trim())</GitShortSha>
+      <Version>$(VersionPrefix).$(GitCommitCount)</Version>
+      <InformationalVersion>$(Version)+$(GitShortSha)</InformationalVersion>
+    </PropertyGroup>
+  </Target>
 </Project>

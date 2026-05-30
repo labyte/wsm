@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using WSM.App.Shared.Models;
@@ -32,10 +32,10 @@ public partial class MainViewModel : ObservableObject
 
         PrimaryNavigationItems = new ObservableCollection<NavigationItem>
         {
-            new NavigationItem(AppPage.ServiceList, "服务总览", "FormatListBulletedSquare"),
-            new NavigationItem(AppPage.ServiceConsole, "服务控制台", "ConsoleLine"),
-            new NavigationItem(AppPage.Logs, "操作日志", "TextBoxSearchOutline"),
-            new NavigationItem(AppPage.AddService, "添加服务", "PlusBox"),
+            new NavigationItem(AppPage.ServiceList, "服务", "FormatListBulletedSquare"),
+            new NavigationItem(AppPage.ServiceConsole, "控制台", "ConsoleLine"),
+            new NavigationItem(AppPage.Logs, "日志", "TextBoxSearchOutline"),
+            new NavigationItem(AppPage.AddService, "添加", "PlusBox"),
             new NavigationItem(AppPage.Settings, "设置", "CogOutline")
         };
 

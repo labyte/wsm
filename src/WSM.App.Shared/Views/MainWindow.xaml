@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:models="clr-namespace:WSM.App.Shared.Models"
         xmlns:vm="clr-namespace:WSM.App.Shared.ViewModels"
         xmlns:views="clr-namespace:WSM.App.Shared.Views"
         mc:Ignorable="d"
@@ -12,57 +13,39 @@
         Width="1200"
         MinHeight="560"
         MinWidth="960"
+        Loaded="Window_OnLoaded"
+        SizeChanged="Window_SizeChanged"
         WindowStartupLocation="CenterScreen"
+        Style="{StaticResource MaterialDesignWindow}"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontWeight="Regular"
         TextElement.FontSize="14"
-        FontFamily="Microsoft YaHei UI"
+        FontFamily="Roboto"
         Background="{DynamicResource MaterialDesignPaper}">
 
   <Window.Resources>
-    <DataTemplate x:Key="NavigationItemTemplate">
-      <Grid Margin="0,2">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-
-        <materialDesign:PackIcon x:Name="NavItemIcon"
-                                 Kind="{Binding IconKind}"
-                                 Width="18"
-                                 Height="18"
-                                 VerticalAlignment="Center"
-                                 Margin="0,0,12,0"
-                                 Foreground="{DynamicResource MaterialDesignBody}" />
-
-        <TextBlock x:Name="NavItemText"
-                   Grid.Column="1"
-                   Text="{Binding Title}"
-                   FontSize="14"
-                   FontWeight="SemiBold"
-                   Foreground="{DynamicResource MaterialDesignBody}"
-                   VerticalAlignment="Center" />
-      </Grid>
-      <DataTemplate.Triggers>
-        <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}" Value="True">
-          <Setter TargetName="NavItemIcon" Property="Foreground" Value="#1976D2" />
-          <Setter TargetName="NavItemText" Property="Foreground" Value="#1976D2" />
-        </DataTrigger>
-      </DataTemplate.Triggers>
-    </DataTemplate>
-
-    <Style x:Key="SidebarNavigationListBoxStyle"
-           TargetType="ListBox"
-           BasedOn="{StaticResource MaterialDesignNavigationPrimaryListBox}">
-      <Setter Property="ItemTemplate" Value="{StaticResource NavigationItemTemplate}" />
-      <Setter Property="FontSize" Value="14" />
-      <Setter Property="Padding" Value="8,4" />
+    <Style x:Key="SidebarRailNavigationListBoxStyle" TargetType="ListBox">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
       <Setter Property="ItemContainerStyle">
         <Setter.Value>
-          <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignNavigationListBoxItem}">
-            <Setter Property="MinHeight" Value="38" />
-            <Setter Property="Padding" Value="14,8" />
-            <Setter Property="Margin" Value="8,1" />
+          <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesign3.NavigationRailPrimaryListBoxItem}">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="materialDesign:NavigationRailAssist.IsTextVisible" Value="True" />
+            <Setter Property="materialDesign:NavigationRailAssist.SelectedIcon" Value="{Binding IconKind}" />
+            <Setter Property="materialDesign:NavigationRailAssist.UnselectedIcon" Value="{Binding IconKind}" />
+          </Style>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="SidebarNavigationListBoxStyle" TargetType="ListBox">
+      <Setter Property="ItemContainerStyle">
+        <Setter.Value>
+          <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesign3.NavigationDrawerPrimaryListBoxItem}">
+            <Setter Property="materialDesign:NavigationDrawerAssist.SelectedIcon" Value="{Binding IconKind}" />
+            <Setter Property="materialDesign:NavigationDrawerAssist.UnselectedIcon" Value="{Binding IconKind}" />
           </Style>
         </Setter.Value>
       </Setter>
@@ -86,62 +69,149 @@
   </Window.Resources>
 
   <materialDesign:DialogHost Identifier="RootDialogHost">
-    <Grid>
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="208" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="*" />
-      </Grid.ColumnDefinitions>
-
-      <!-- 常驻侧边栏 -->
-      <DockPanel Grid.Column="0" Background="{DynamicResource MaterialDesignCardBackground}">
-        <StackPanel DockPanel.Dock="Top" Margin="14,14,14,10" HorizontalAlignment="Center">
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-            <Grid Width="34" Height="34">
-              <Ellipse Fill="#2E7DFF" />
+    <materialDesign:DrawerHost x:Name="NavDrawer"
+                               IsLeftDrawerOpen="{Binding ElementName=MenuToggleButton, Path=IsChecked}"
+                               LeftDrawerCornerRadius="0 20 20 0"
+                               OpenMode="Modal">
+      <!--<materialDesign:DrawerHost.LeftDrawerContent>
+        <DockPanel MinWidth="220">
+          <DockPanel Margin="16" DockPanel.Dock="Top" LastChildFill="False">
+            <Grid Width="36" Height="36" DockPanel.Dock="Left">
+              <Ellipse Fill="{DynamicResource PrimaryHueMidBrush}" />
               <Ellipse Margin="2.5"
-                       Fill="#5C93FF"
+                       Fill="{DynamicResource PrimaryHueLightBrush}"
                        Opacity="0.35" />
               <TextBlock Text="W"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center"
                          FontSize="16"
                          FontWeight="Bold"
-                         Foreground="White" />
+                         Foreground="{DynamicResource PrimaryHueMidForegroundBrush}" />
             </Grid>
-            <TextBlock Text="服务管理器"
-                       Margin="8,0,0,0"
+            <TextBlock Margin="10,0,10,0"
+                       HorizontalAlignment="Center"
                        VerticalAlignment="Center"
-                       Style="{StaticResource MaterialDesignHeadline6TextBlock}" />
-          </StackPanel>
-        </StackPanel>
+                       DockPanel.Dock="Left"
+                       Style="{StaticResource MaterialDesignTitleLargeTextBlock}"
+                       Text="服务管理器"
+                       TextWrapping="Wrap" />
+          </DockPanel>
 
-        <ListBox Margin="0,10,0,0"
-                 ItemsSource="{Binding PrimaryNavigationItems}"
-                 SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}"
-                 Style="{StaticResource SidebarNavigationListBoxStyle}" />
-      </DockPanel>
+          <ListBox Margin="12,16,12,16"
+                   ItemsSource="{Binding PrimaryNavigationItems}"
+                   SelectionChanged="NavigationList_OnSelectionChanged"
+                   SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}"
+                   Style="{StaticResource SidebarNavigationListBoxStyle}">
+            <ListBox.Resources>
+              <DataTemplate DataType="{x:Type models:NavigationItem}">
+                <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+              </DataTemplate>
+              <Style TargetType="ScrollViewer" BasedOn="{StaticResource MaterialDesignScrollViewer}" />
+              <Style TargetType="ScrollBar" BasedOn="{StaticResource MaterialDesignScrollBarMinimal}" />
+            </ListBox.Resources>
+          </ListBox>
+        </DockPanel>
+      </materialDesign:DrawerHost.LeftDrawerContent>-->
 
-      <Border Grid.Column="1"
-              Width="1"
-              Background="{DynamicResource MaterialDesignDivider}" />
-
-      <!-- 主内容区 -->
-      <DockPanel Grid.Column="2">
+      <DockPanel>
         <materialDesign:ColorZone DockPanel.Dock="Top"
-                                  Mode="PrimaryMid"
+                                  Mode="Standard"
                                   Padding="16,12">
-          <TextBlock Text="{Binding SelectedPageTitle}"
-                     VerticalAlignment="Center"
-                     Style="{StaticResource MaterialDesignHeadline6TextBlock}" />
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <ToggleButton x:Name="MenuToggleButton"
+                          Margin="0,0,16,0"
+                          Click="MenuToggleButton_OnClick"
+                          IsChecked="False"
+                          Style="{StaticResource MaterialDesignHamburgerToggleButton}" />
+
+            <TextBlock Grid.Column="1"
+                       VerticalAlignment="Center"
+                       Style="{StaticResource MaterialDesignTitleLargeTextBlock}"
+                       Text="{Binding SelectedPageTitle}" />
+
+            <materialDesign:PopupBox Grid.Column="2"
+                                     PlacementMode="BottomAndAlignRightEdges"
+                                     StaysOpen="False">
+              <StackPanel Margin="10">
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Margin="0,0,10,0"
+                             VerticalAlignment="Center"
+                             Text="浅色" />
+                  <ToggleButton x:Name="DarkModeToggleButton"
+                                Grid.Column="1"
+                                Click="MenuDarkModeButton_Click" />
+                  <TextBlock Grid.Column="2"
+                             Margin="10,0,0,0"
+                             VerticalAlignment="Center"
+                             Text="深色" />
+                </Grid>
+              </StackPanel>
+            </materialDesign:PopupBox>
+          </Grid>
         </materialDesign:ColorZone>
 
         <materialDesign:Snackbar x:Name="RootSnackbar"
                                  DockPanel.Dock="Bottom" />
 
-        <ContentControl Margin="24"
-                        Content="{Binding CurrentPageViewModel}" />
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+
+          <Grid x:Name="NavRailPanel"
+                Grid.Column="0"
+                Width="80"
+                Background="{DynamicResource MaterialDesign.Brush.Background}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!--<Button Grid.Row="0"
+                    Width="48"
+                    Height="48"
+                    Margin="0,16,0,16"
+                    Click="RailMenuButton_OnClick"
+                    Style="{StaticResource MaterialDesignToolButton}">
+              <materialDesign:PackIcon Kind="Menu" Width="24" Height="24" />
+            </Button>-->
+
+            <Viewbox Grid.Row="1"
+                     VerticalAlignment="Top"
+                     Stretch="Uniform">
+              <ListBox VerticalAlignment="Top"
+                       ItemsSource="{Binding PrimaryNavigationItems}"
+                       SelectionChanged="NavigationList_OnSelectionChanged"
+                       SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}"
+                       Style="{StaticResource SidebarRailNavigationListBoxStyle}">
+                <ListBox.Resources>
+                  <DataTemplate DataType="{x:Type models:NavigationItem}">
+                    <TextBlock Text="{Binding Title}"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap" />
+                  </DataTemplate>
+                </ListBox.Resources>
+              </ListBox>
+            </Viewbox>
+          </Grid>
+
+          <ContentControl Grid.Column="1"
+                          Margin="24"
+                          Content="{Binding CurrentPageViewModel}" />
+        </Grid>
       </DockPanel>
-    </Grid>
+    </materialDesign:DrawerHost>
   </materialDesign:DialogHost>
 </Window>
