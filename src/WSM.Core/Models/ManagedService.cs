@@ -49,6 +49,36 @@ public sealed class ManagedService
 
     public LogPolicy LogPolicy { get; set; } = LogPolicy.CreateDefault();
 
+    /// <summary>
+    /// 日志来源模式：WinSW 或服务自身日志文件。
+    /// </summary>
+    public ServiceLogSourceMode LogSourceMode { get; set; } = ServiceLogSourceMode.WinSw;
+
+    /// <summary>
+    /// 当日志来源为服务自身文件时，读取的日志文件路径。
+    /// </summary>
+    public string ExternalLogFilePath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 当日志来源为服务自身文件时，日志目录路径。
+    /// </summary>
+    public string ExternalLogDirectoryPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 当日志来源为服务自身文件时，日志扩展名过滤（如 ".log;.txt"）。
+    /// </summary>
+    public string ExternalLogFileExtensions { get; set; } = ".log;.txt";
+
+    /// <summary>
+    /// 是否启用外部日志实时跟踪。
+    /// </summary>
+    public bool ExternalLogRealtimeTracking { get; set; } = true;
+
+    /// <summary>
+    /// 外部日志默认 tail 行数。
+    /// </summary>
+    public int ExternalLogTailLines { get; set; } = 500;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

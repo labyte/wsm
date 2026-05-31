@@ -37,6 +37,24 @@ public sealed class ServiceLogLine
 }
 
 /// <summary>
+/// 日志清理失败项。
+/// </summary>
+public sealed class LogClearFailure
+{
+    public string FilePath { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 日志清理结果。
+/// </summary>
+public sealed class LogClearResult
+{
+    public int ClearedCount { get; set; }
+    public List<LogClearFailure> Failures { get; } = new List<LogClearFailure>();
+}
+
+/// <summary>
 /// 读取 WinSW 服务日志文件（wrapper / out / err）。
 /// </summary>
 public sealed class ServiceLogReader
@@ -56,6 +74,14 @@ public sealed class ServiceLogReader
         IReadOnlyList<string> serviceIds,
         int maxLines = 3000)
     {
+        return ReadMergedLogs(serviceIds, null, maxLines);
+    }
+
+    public IReadOnlyList<ServiceLogLine> ReadMergedLogs(
+        IReadOnlyList<string> serviceIds,
+        IReadOnlyDictionary<string, string>? externalLogFiles,
+        int maxLines = 3000)
+    {
         var lines = new List<ServiceLogLine>();
 
         foreach (var serviceId in serviceIds)
@@ -64,18 +90,57 @@ public sealed class ServiceLogReader
             {
                 lines.AddRange(ReadLogFile(serviceId, file));
             }
+
+            if (externalLogFiles != null
+                && externalLogFiles.TryGetValue(serviceId, out var externalFile)
+                && !string.IsNullOrWhiteSpace(externalFile))
+            {
+                lines.AddRange(ReadLogFile(serviceId, externalFile, "external"));
+            }
         }
 
-        var ordered = lines
-            .OrderBy(x => x.Timestamp ?? DateTime.MinValue)
-            .ThenBy(x => x.Text, StringComparer.Ordinal)
-            .ToList();
-
-        return TakeLastSafe(ordered, maxLines);
+        // 按文件读取顺序与文件内原始行序输出，不做二次排序。
+        return TakeLastSafe(lines, maxLines);
     }
 
     /// <summary>
-    /// 读取所有服务的 wrapper 历史日志，并按时间合并排序。
+    /// 按目录与扩展名规则解析最新改动的日志文件。
+    /// </summary>
+    public string? ResolveLatestExternalLogFile(string? directoryPath, string? extensionFilterText)
+    {
+        if (string.IsNullOrWhiteSpace(directoryPath))
+        {
+            return null;
+        }
+
+        var normalizedDirectory = (directoryPath ?? string.Empty).Trim();
+        if (!Directory.Exists(normalizedDirectory))
+        {
+            return null;
+        }
+
+        var allowedExtensions = ParseExtensions(extensionFilterText);
+        var candidates = Directory.GetFiles(normalizedDirectory, "*", SearchOption.TopDirectoryOnly)
+            .Where(path =>
+            {
+                if (allowedExtensions.Count == 0)
+                {
+                    return true;
+                }
+
+                var extension = Path.GetExtension(path) ?? string.Empty;
+                return allowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
+            })
+            .Select(path => new FileInfo(path))
+            .OrderByDescending(info => info.LastWriteTimeUtc)
+            .ThenBy(info => info.FullName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return candidates.Count > 0 ? candidates[0].FullName : null;
+    }
+
+    /// <summary>
+    /// 读取所有服务的 wrapper 历史日志（保持文件内原始顺序）。
     /// </summary>
     public IReadOnlyList<ServiceLogLine> ReadMergedWrapperLogs(
         IReadOnlyList<string> serviceIds,
@@ -91,12 +156,7 @@ public sealed class ServiceLogReader
             }
         }
 
-        var ordered = lines
-            .OrderBy(x => x.Timestamp ?? DateTime.MinValue)
-            .ThenBy(x => x.Text, StringComparer.Ordinal)
-            .ToList();
-
-        return TakeLastSafe(ordered, maxLines);
+        return TakeLastSafe(lines, maxLines);
     }
 
     private static List<ServiceLogLine> TakeLastSafe(List<ServiceLogLine> ordered, int maxLines)
@@ -218,33 +278,7 @@ public sealed class ServiceLogReader
 
     public int ClearLogs(IReadOnlyList<string> serviceIds)
     {
-        var clearedCount = 0;
-        foreach (var serviceId in serviceIds)
-        {
-            foreach (var filePath in DiscoverLogFiles(serviceId))
-            {
-                try
-                {
-                    if (!File.Exists(filePath))
-                    {
-                        continue;
-                    }
-
-                    File.WriteAllText(filePath, string.Empty);
-                    clearedCount++;
-                }
-                catch (IOException)
-                {
-                    // 忽略单个文件清理失败，继续处理其余日志文件。
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    // 忽略权限不足文件，避免中断整个清理流程。
-                }
-            }
-        }
-
-        return clearedCount;
+        return ClearLogsDetailed(serviceIds).ClearedCount;
     }
 
     /// <summary>
@@ -252,64 +286,129 @@ public sealed class ServiceLogReader
     /// </summary>
     public int ClearWrapperLogs(IReadOnlyList<string> serviceIds)
     {
-        var clearedCount = 0;
+        return ClearWrapperLogsDetailed(serviceIds).ClearedCount;
+    }
+
+    /// <summary>
+    /// 清空指定日志文件集合内容。
+    /// </summary>
+    public int ClearLogFiles(IEnumerable<string> filePaths)
+    {
+        return ClearLogFilesDetailed(filePaths).ClearedCount;
+    }
+
+    /// <summary>
+    /// 清空受管服务日志并返回明细结果。
+    /// </summary>
+    public LogClearResult ClearLogsDetailed(IReadOnlyList<string> serviceIds)
+    {
+        var result = new LogClearResult();
         foreach (var serviceId in serviceIds)
         {
-            foreach (var filePath in DiscoverWrapperLogFiles(serviceId))
-            {
-                try
-                {
-                    if (!File.Exists(filePath))
-                    {
-                        continue;
-                    }
+            var partial = ClearLogFilesDetailed(DiscoverLogFiles(serviceId));
+            result.ClearedCount += partial.ClearedCount;
+            result.Failures.AddRange(partial.Failures);
+        }
 
-                    File.WriteAllText(filePath, string.Empty);
-                    clearedCount++;
-                }
-                catch (IOException)
+        return result;
+    }
+
+    /// <summary>
+    /// 清空 wrapper 日志并返回明细结果。
+    /// </summary>
+    public LogClearResult ClearWrapperLogsDetailed(IReadOnlyList<string> serviceIds)
+    {
+        var result = new LogClearResult();
+        foreach (var serviceId in serviceIds)
+        {
+            var partial = ClearLogFilesDetailed(DiscoverWrapperLogFiles(serviceId));
+            result.ClearedCount += partial.ClearedCount;
+            result.Failures.AddRange(partial.Failures);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 清空指定日志文件集合并返回明细结果。
+    /// </summary>
+    public LogClearResult ClearLogFilesDetailed(IEnumerable<string> filePaths)
+    {
+        var result = new LogClearResult();
+        foreach (var filePath in filePaths
+                     .Where(path => !string.IsNullOrWhiteSpace(path))
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            try
+            {
+                if (!File.Exists(filePath))
                 {
-                    // 忽略单个文件清理失败，继续处理其余日志文件。
+                    continue;
                 }
-                catch (UnauthorizedAccessException)
+
+                // 允许并发写入场景下尽量完成截断，提升“清空日志”成功率。
+                using var stream = new FileStream(
+                    filePath,
+                    FileMode.Open,
+                    FileAccess.Write,
+                    FileShare.ReadWrite | FileShare.Delete);
+                stream.SetLength(0);
+                result.ClearedCount++;
+            }
+            catch (IOException)
+            {
+                result.Failures.Add(new LogClearFailure
                 {
-                    // 忽略权限不足文件，避免中断整个清理流程。
-                }
+                    FilePath = filePath,
+                    Reason = "文件被占用"
+                });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                result.Failures.Add(new LogClearFailure
+                {
+                    FilePath = filePath,
+                    Reason = "权限不足"
+                });
             }
         }
 
-        return clearedCount;
+        return result;
     }
 
-    private IEnumerable<ServiceLogLine> ReadLogFile(string serviceId, string filePath)
+    private IEnumerable<ServiceLogLine> ReadLogFile(string serviceId, string filePath, string? sourceHint = null)
     {
         if (!File.Exists(filePath))
         {
             yield break;
         }
 
-        string source;
-        var fileName = Path.GetFileName(filePath);
-        if (fileName.Contains(".wrapper.", StringComparison.OrdinalIgnoreCase))
+        string source = "log";
+        if (!string.IsNullOrWhiteSpace(sourceHint))
         {
-            source = "wrapper";
-        }
-        else if (fileName.Contains(".out.", StringComparison.OrdinalIgnoreCase))
-        {
-            source = "stdout";
-        }
-        else if (fileName.Contains(".err.", StringComparison.OrdinalIgnoreCase))
-        {
-            source = "stderr";
+            source = sourceHint ?? "log";
         }
         else
         {
-            source = "log";
+            var fileName = Path.GetFileName(filePath);
+            if (fileName.IndexOf(".wrapper.", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                source = "wrapper";
+            }
+            else if (fileName.IndexOf(".out.", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                source = "stdout";
+            }
+            else if (fileName.IndexOf(".err.", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                source = "stderr";
+            }
         }
 
         foreach (var rawLine in ReadLogLinesSafe(filePath))
         {
-            if (string.IsNullOrWhiteSpace(rawLine))
+            var normalizedLine = rawLine ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedLine))
             {
                 continue;
             }
@@ -317,16 +416,16 @@ public sealed class ServiceLogReader
             var line = new ServiceLogLine
             {
                 ServiceId = serviceId,
-                Source = source,
-                Text = rawLine
+                Source = source ?? "log",
+                Text = normalizedLine
             };
 
-            var match = TimestampPattern.Match(rawLine);
+            var match = TimestampPattern.Match(normalizedLine);
             if (match.Success
                 && DateTime.TryParse(match.Groups["ts"].Value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var ts))
             {
                 line.Timestamp = ts;
-                line.Text = match.Groups["msg"].Value;
+                line.Text = match.Groups["msg"].Value ?? string.Empty;
             }
 
             yield return line;
@@ -368,5 +467,22 @@ public sealed class ServiceLogReader
     {
         var fileName = Path.GetFileName(filePath);
         return fileName.IndexOf(".wrapper.", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private static List<string> ParseExtensions(string? extensionFilterText)
+    {
+        if (string.IsNullOrWhiteSpace(extensionFilterText))
+        {
+            return new List<string> { ".log", ".txt" };
+        }
+
+        var normalizedFilter = extensionFilterText ?? string.Empty;
+        return normalizedFilter
+            .Split(new[] { ';', ',', '|', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => x.Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.StartsWith(".") ? x : "." + x)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 }

@@ -20,6 +20,18 @@ namespace WSM.App.Shared.ViewModels;
 /// </summary>
 public partial class SettingsViewModel : ObservableObject, INavigationAware
 {
+    public sealed class DefaultRuleOption
+    {
+        public DefaultRuleOption(string value, string display)
+        {
+            Value = value;
+            Display = display;
+        }
+
+        public string Value { get; }
+        public string Display { get; }
+    }
+
     public sealed class WinSwToolOption
     {
         public WinSwToolOption(string value, string display)
@@ -61,11 +73,22 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
             new(WsmPaths.WinSwToolModeGlobal, "全局 winsw 命令"),
             new(WsmPaths.WinSwToolModeCustom, "自定义可执行路径")
         };
+        DefaultRuleOptions = new List<DefaultRuleOption>
+        {
+            new(WsmPaths.DefaultRuleProgramName, "程序名称"),
+            new(WsmPaths.DefaultRulePrefixProgramName, "前缀 + 程序名称")
+        };
         AppVersion = typeof(Core.Models.ManagedService).Assembly.GetName().Version?.ToString() ?? "0.1.0";
         DataRootPath = _paths.DataRoot;
         WinSwToolMode = _paths.WinSwToolMode;
         CustomWinSwPath = _paths.CustomWinSwPath;
         OperationLogPath = _paths.OperationLogPath;
+        ServiceIdRuleMode = _paths.ServiceIdRuleMode;
+        ServiceIdRulePrefix = _paths.ServiceIdRulePrefix;
+        ServiceNameRuleMode = _paths.ServiceNameRuleMode;
+        ServiceNameRulePrefix = _paths.ServiceNameRulePrefix;
+        ServiceDescriptionRuleMode = _paths.ServiceDescriptionRuleMode;
+        ServiceDescriptionRulePrefix = _paths.ServiceDescriptionRulePrefix;
         UpdateWinSwToolDerivedState();
         RefreshAdminStatus();
     }
@@ -73,6 +96,7 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
     public string AppVersion { get; }
 
     public IReadOnlyList<WinSwToolOption> WinSwToolModeOptions { get; }
+    public IReadOnlyList<DefaultRuleOption> DefaultRuleOptions { get; }
 
     [ObservableProperty]
     private string _hint = "关闭主窗口时将最小化到系统托盘。";
@@ -113,12 +137,43 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
     [ObservableProperty]
     private bool _isApplyingOperationLogPath;
 
+    [ObservableProperty]
+    private string _serviceIdRuleMode = WsmPaths.DefaultRuleProgramName;
+
+    [ObservableProperty]
+    private string _serviceIdRulePrefix = "svc-";
+
+    [ObservableProperty]
+    private string _serviceNameRuleMode = WsmPaths.DefaultRuleProgramName;
+
+    [ObservableProperty]
+    private string _serviceNameRulePrefix = string.Empty;
+
+    [ObservableProperty]
+    private string _serviceDescriptionRuleMode = WsmPaths.DefaultRulePrefixProgramName;
+
+    [ObservableProperty]
+    private string _serviceDescriptionRulePrefix = "由 WSM 托管：";
+
+    [ObservableProperty]
+    private bool _isApplyingServiceNamingRules;
+
+    public bool IsServiceIdPrefixVisible => string.Equals(ServiceIdRuleMode, WsmPaths.DefaultRulePrefixProgramName, StringComparison.OrdinalIgnoreCase);
+    public bool IsServiceNamePrefixVisible => string.Equals(ServiceNameRuleMode, WsmPaths.DefaultRulePrefixProgramName, StringComparison.OrdinalIgnoreCase);
+    public bool IsServiceDescriptionPrefixVisible => string.Equals(ServiceDescriptionRuleMode, WsmPaths.DefaultRulePrefixProgramName, StringComparison.OrdinalIgnoreCase);
+
     public void OnNavigatedTo()
     {
         DataRootPath = _paths.DataRoot;
         WinSwToolMode = _paths.WinSwToolMode;
         CustomWinSwPath = _paths.CustomWinSwPath;
         OperationLogPath = _paths.OperationLogPath;
+        ServiceIdRuleMode = _paths.ServiceIdRuleMode;
+        ServiceIdRulePrefix = _paths.ServiceIdRulePrefix;
+        ServiceNameRuleMode = _paths.ServiceNameRuleMode;
+        ServiceNameRulePrefix = _paths.ServiceNameRulePrefix;
+        ServiceDescriptionRuleMode = _paths.ServiceDescriptionRuleMode;
+        ServiceDescriptionRulePrefix = _paths.ServiceDescriptionRulePrefix;
         UpdateWinSwToolDerivedState();
         RefreshAdminStatus();
     }
@@ -366,6 +421,40 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         return Task.CompletedTask;
     }
 
+    [RelayCommand]
+    private Task ApplyServiceNamingRulesAsync()
+    {
+        if (IsApplyingServiceNamingRules)
+        {
+            return Task.CompletedTask;
+        }
+
+        IsApplyingServiceNamingRules = true;
+        try
+        {
+            var changed = _paths.SetServiceNamingRules(
+                ServiceIdRuleMode,
+                ServiceIdRulePrefix,
+                ServiceNameRuleMode,
+                ServiceNameRulePrefix,
+                ServiceDescriptionRuleMode,
+                ServiceDescriptionRulePrefix);
+            _snackbarService.ShowInfo(changed
+                ? "服务默认命名规则已应用。"
+                : "服务默认命名规则未变化。");
+        }
+        catch (Exception ex)
+        {
+            _snackbarService.ShowError("应用服务默认命名规则失败：" + ex.Message);
+        }
+        finally
+        {
+            IsApplyingServiceNamingRules = false;
+        }
+
+        return Task.CompletedTask;
+    }
+
     private static void MigrateDataRoot(string sourceRoot, string targetRoot)
     {
         if (!Directory.Exists(sourceRoot))
@@ -432,6 +521,21 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
     partial void OnCustomWinSwPathChanged(string value)
     {
         UpdateWinSwToolDerivedState();
+    }
+
+    partial void OnServiceIdRuleModeChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsServiceIdPrefixVisible));
+    }
+
+    partial void OnServiceNameRuleModeChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsServiceNamePrefixVisible));
+    }
+
+    partial void OnServiceDescriptionRuleModeChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsServiceDescriptionPrefixVisible));
     }
 
     private void UpdateWinSwToolDerivedState()
@@ -523,7 +627,13 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
                 Mode = source.LogPolicy.Mode,
                 SizeThresholdKb = source.LogPolicy.SizeThresholdKb,
                 KeepFiles = source.LogPolicy.KeepFiles
-            }
+            },
+            LogSourceMode = source.LogSourceMode,
+            ExternalLogFilePath = source.ExternalLogFilePath,
+            ExternalLogDirectoryPath = source.ExternalLogDirectoryPath,
+            ExternalLogFileExtensions = source.ExternalLogFileExtensions,
+            ExternalLogRealtimeTracking = source.ExternalLogRealtimeTracking,
+            ExternalLogTailLines = source.ExternalLogTailLines
         };
     }
 }

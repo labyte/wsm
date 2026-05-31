@@ -22,227 +22,463 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <ScrollViewer Grid.Row="0"
-                  VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled"
-                  Style="{StaticResource MaterialDesignScrollViewer}">
-      <ScrollViewer.Resources>
-        <Style TargetType="ScrollBar">
-          <Setter Property="Width" Value="5" />
-          <Setter Property="Background" Value="Transparent" />
-          <Setter Property="Opacity" Value="0.42" />
-          <Style.Triggers>
-            <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ScrollViewer}, Path=IsMouseOver}" Value="True">
-              <Setter Property="Width" Value="12" />
-              <Setter Property="Opacity" Value="1" />
-            </DataTrigger>
-          </Style.Triggers>
-        </Style>
-      </ScrollViewer.Resources>
-      <Grid HorizontalAlignment="Stretch"> 
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="0.15*" />
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="0.15*" />
-        </Grid.ColumnDefinitions>
-      <StackPanel Grid.Column="1" 
-                  HorizontalAlignment="Stretch" >
-        <materialDesign:Card Padding="16" Margin="0,0,0,12">
-          <StackPanel>
-            <TextBlock Text="程序与基本信息"
-                       Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
+    <materialDesign:Card  Padding="16">
+      <TabControl>
+        <TabItem Header="基本">
+          <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Style="{StaticResource MaterialDesignScrollViewer}">
 
-            <Grid Margin="0,12,0,0">
+            <Grid HorizontalAlignment="Stretch">
               <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="0.1*" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="0.1*" />
               </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="服务程序 *" Style="{StaticResource FieldLabelStyle}" />
-              <Button Grid.Column="1"
-                      Style="{StaticResource MaterialDesignFlatButton}"
-                      HorizontalAlignment="Left"
-                      Command="{Binding BrowseExecutableCommand}"
-                      Content="选择服务程序..." />
+              <StackPanel Grid.Column="1">
+                <Grid Margin="0,24">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="服务程序 *" Style="{StaticResource FieldLabelStyle}" />
+                  <Button Grid.Column="1"
+                          Style="{StaticResource MaterialDesignFlatButton}"
+                          HorizontalAlignment="Left"
+                          Command="{Binding BrowseExecutableCommand}"
+                          Content="选择服务程序..." />
+                </Grid>
+
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="可执行路径 *" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBox Grid.Column="1" Text="{Binding Draft.ExecutablePath, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <TextBlock Margin="140,4,0,0"
+                           Text="{Binding ExecutablePathError}"
+                           Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                           FontSize="12" />
+
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="工作目录" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBox Grid.Column="1" Text="{Binding Draft.WorkingDirectory, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="启动参数" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBox Grid.Column="1" Text="{Binding Draft.Arguments, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="服务 ID *" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBox Grid.Column="1" Text="{Binding Draft.Id, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <TextBlock Margin="140,4,0,0"
+                           Text="{Binding ServiceIdError}"
+                           Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                           FontSize="12" />
+
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="显示名称 *" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBox Grid.Column="1" Text="{Binding Draft.DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <TextBlock Margin="140,4,0,0"
+                           Text="{Binding DisplayNameError}"
+                           Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                           FontSize="12" />
+
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="描述" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBox Grid.Column="1"
+                           Text="{Binding Draft.Description, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="启动类型" Style="{StaticResource FieldLabelStyle}" />
+                  <ComboBox Grid.Column="1"
+                            DisplayMemberPath="Display"
+                            SelectedValuePath="Value"
+                            ItemsSource="{Binding StartModeOptions}"
+                            SelectedValue="{Binding Draft.StartMode, Mode=TwoWay}" />
+                </Grid>
+
+                <Grid Margin="0,10,0,0">
+                  <Grid.Style>
+                    <Style TargetType="Grid">
+                      <Setter Property="Visibility" Value="Collapsed" />
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding Draft.StartMode}" Value="Automatic">
+                          <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Grid.Style>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="延迟启动" Style="{StaticResource FieldLabelStyle}" />
+                  <CheckBox Grid.Column="1"
+                            Content="启用延迟自动启动"
+                            IsChecked="{Binding Draft.DelayedAutoStart}" />
+                </Grid>
+
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="自动刷新" Style="{StaticResource FieldLabelStyle}" />
+                  <CheckBox Grid.Column="1"
+                            Content="启用自动刷新配置（autoRefresh）"
+                            IsChecked="{Binding Draft.AutoRefresh}" />
+                </Grid>
+
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="隐藏窗口" Style="{StaticResource FieldLabelStyle}" />
+                  <CheckBox Grid.Column="1"
+                            Content="隐藏程序窗口（hidewindow）"
+                            IsChecked="{Binding Draft.HideWindow}" />
+                </Grid>
+
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="停止超时 *" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBox Grid.Column="1" Text="{Binding Draft.StopTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <TextBlock Margin="140,4,0,0"
+                           Text="{Binding StopTimeoutError}"
+                           Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                           FontSize="12" />
+
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="安装后启动" Style="{StaticResource FieldLabelStyle}" />
+                  <CheckBox Grid.Column="1"
+                            Content="安装后立即启动服务"
+                            IsChecked="{Binding Draft.StartAfterInstall}" />
+                </Grid>
+              </StackPanel>
             </Grid>
+          </ScrollViewer>
+        </TabItem>
 
-            <Grid Margin="0,10,0,0">
+        <TabItem Header="日志">
+          <Grid HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="0.1*" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="0.1*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" Margin="0,24">
+            <Grid Margin="0,0,0,0">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="140" />
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="可执行路径 *" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1" Text="{Binding Draft.ExecutablePath, UpdateSourceTrigger=PropertyChanged}" />
-            </Grid>
-            <TextBlock Margin="140,4,0,0"
-                       Text="{Binding ExecutablePathError}"
-                       Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                       FontSize="12" />
-
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="工作目录" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1" Text="{Binding Draft.WorkingDirectory, UpdateSourceTrigger=PropertyChanged}" />
-            </Grid>
-
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="启动参数" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1" Text="{Binding Draft.Arguments, UpdateSourceTrigger=PropertyChanged}" />
-            </Grid>
-
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="服务 ID *" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1" Text="{Binding Draft.Id, UpdateSourceTrigger=PropertyChanged}" />
-            </Grid>
-            <TextBlock Margin="140,4,0,0"
-                       Text="{Binding ServiceIdError}"
-                       Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                       FontSize="12" />
-
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="显示名称 *" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1" Text="{Binding Draft.DisplayName, UpdateSourceTrigger=PropertyChanged}" />
-            </Grid>
-            <TextBlock Margin="140,4,0,0"
-                       Text="{Binding DisplayNameError}"
-                       Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                       FontSize="12" />
-
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="描述" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1"
-                       Text="{Binding Draft.Description, UpdateSourceTrigger=PropertyChanged}"
-                       AcceptsReturn="True"
-                       MinHeight="72"
-                       TextWrapping="Wrap" />
-            </Grid>
-          </StackPanel>
-        </materialDesign:Card>
-
-        <materialDesign:Card Padding="16" Margin="0,0,0,12">
-          <StackPanel>
-            <TextBlock Text="运行与启动"
-                       Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
-
-            <Grid Margin="0,12,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="启动类型" Style="{StaticResource FieldLabelStyle}" />
+              <TextBlock Grid.Column="0" Text="日志方案" Style="{StaticResource FieldLabelStyle}" />
               <ComboBox Grid.Column="1"
-                        ItemsSource="{Binding StartModeOptions}"
-                        SelectedItem="{Binding Draft.StartMode}" />
+                          DisplayMemberPath="Display"
+                          SelectedValuePath="Value"
+                          ItemsSource="{Binding LogSourceOptions}"
+                          SelectedValue="{Binding Draft.LogSourceMode, Mode=TwoWay}" />
             </Grid>
 
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="延迟启动" Style="{StaticResource FieldLabelStyle}" />
-              <CheckBox Grid.Column="1"
-                        Content="启用延迟自动启动"
-                        IsChecked="{Binding Draft.DelayedAutoStart}" />
-            </Grid>
+            <StackPanel Margin="0,10,0,0">
+              <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                  <Setter Property="Visibility" Value="Collapsed" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding Draft.LogSourceMode}" Value="WinSw">
+                      <Setter Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </StackPanel.Style>
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="140" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="WinSW 模式" Style="{StaticResource FieldLabelStyle}" />
+                <ComboBox Grid.Column="1"
+                            DisplayMemberPath="Display"
+                            SelectedValuePath="Value"
+                            ItemsSource="{Binding WinSwLogModeOptions}"
+                            SelectedValue="{Binding Draft.LogMode, Mode=TwoWay}" />
+              </Grid>
+              <Grid Margin="0,10,0,0">
+                <Grid.Style>
+                  <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="Ignore">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="Append">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="Reset">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="Roll">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="RollBySize">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="RollByTime">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="RollBySizeTime">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="140" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="大小阈值(KB)" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Grid.Column="1" Text="{Binding Draft.LogSizeThresholdKb, UpdateSourceTrigger=PropertyChanged}" />
+              </Grid>
+              <Grid Margin="0,10,0,0">
+                <Grid.Style>
+                  <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="Ignore">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="Append">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="Reset">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="Roll">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="RollBySize">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="RollByTime">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Draft.LogMode}" Value="RollBySizeTime">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="140" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="保留文件数" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Grid.Column="1" Text="{Binding Draft.LogKeepFiles, UpdateSourceTrigger=PropertyChanged}" />
+              </Grid>
+            </StackPanel>
 
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="停止超时 *" Style="{StaticResource FieldLabelStyle}" />
-              <TextBox Grid.Column="1" Text="{Binding Draft.StopTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
-            </Grid>
-            <TextBlock Margin="140,4,0,0"
-                       Text="{Binding StopTimeoutError}"
-                       Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                       FontSize="12" />
-
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="安装后启动" Style="{StaticResource FieldLabelStyle}" />
-              <CheckBox Grid.Column="1"
-                        Content="安装后立即启动服务"
-                        IsChecked="{Binding Draft.StartAfterInstall}" />
-            </Grid>
-
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="自动刷新" Style="{StaticResource FieldLabelStyle}" />
-              <CheckBox Grid.Column="1"
-                        Content="启用自动刷新配置（autoRefresh）"
-                        IsChecked="{Binding Draft.AutoRefresh}" />
-            </Grid>
-
-            <Grid Margin="0,10,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="隐藏窗口" Style="{StaticResource FieldLabelStyle}" />
-              <CheckBox Grid.Column="1"
-                        Content="隐藏程序窗口（hidewindow）"
-                        IsChecked="{Binding Draft.HideWindow}" />
-            </Grid>
+            <StackPanel Margin="0,10,0,0">
+              <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                  <Setter Property="Visibility" Value="Collapsed" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding Draft.LogSourceMode}" Value="ExternalFile">
+                      <Setter Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </StackPanel.Style>
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="140" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="8" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="日志目录" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Grid.Column="1" Text="{Binding Draft.ExternalLogDirectoryPath, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Grid.Column="3"
+                          Style="{StaticResource MaterialDesignFlatButton}"
+                          Command="{Binding BrowseExternalLogDirectoryCommand}"
+                          Content="浏览..." />
+              </Grid>
+              <Grid Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="140" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="扩展名匹配" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Grid.Column="1"
+                           Text="{Binding Draft.ExternalLogFileExtensions, UpdateSourceTrigger=PropertyChanged}"
+                           materialDesign:HintAssist.Hint=".log;.txt;.data" />
+              </Grid>
+              <Grid Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="140" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="实时追踪" Style="{StaticResource FieldLabelStyle}" />
+                <CheckBox Grid.Column="1"
+                            Content="启用服务自身日志实时追踪"
+                            IsChecked="{Binding Draft.ExternalLogRealtimeTracking}" />
+              </Grid>
+              <Grid Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="140" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Tail 行数" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Grid.Column="1" Text="{Binding Draft.ExternalLogTailLines, UpdateSourceTrigger=PropertyChanged}" />
+              </Grid>
+              <TextBlock Margin="140,6,0,0"
+                           Opacity="0.7"
+                           TextWrapping="Wrap"
+                           Text="提示：将按扩展名过滤日志目录文件，并自动读取最新改动文件；同时 WinSW 日志模式会设为 none，避免重复输出。" />
+            </StackPanel>
           </StackPanel>
-        </materialDesign:Card>
+          </Grid>
+        </TabItem>
 
-        <materialDesign:Card Padding="16" Margin="0,0,0,12">
-          <StackPanel>
-            <TextBlock Text="自动恢复设置"
-                       Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
-
-            <Grid Margin="0,12,0,0">
+        <TabItem Header="重启策略">
+          <Grid HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="0.1*" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="0.1*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" Margin="0,24">
+            <Grid>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="140" />
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="崩溃恢复" Style="{StaticResource FieldLabelStyle}" />
-              <CheckBox Grid.Column="1"
-                        Content="启用崩溃自动恢复（进程退出自动重启）"
-                        IsChecked="{Binding Draft.EnableCrashRecovery}" />
+              <TextBlock Grid.Column="0" Text="失败动作" Style="{StaticResource FieldLabelStyle}" />
+              <ComboBox Grid.Column="1"
+                          DisplayMemberPath="Display"
+                          SelectedValuePath="Value"
+                          ItemsSource="{Binding FailureActionOptions}"
+                          SelectedValue="{Binding Draft.FailureAction, Mode=TwoWay}" />
             </Grid>
 
             <Grid Margin="0,10,0,0">
+              <Grid.Style>
+                <Style TargetType="Grid">
+                  <Setter Property="Visibility" Value="Collapsed" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding Draft.FailureAction}" Value="Restart">
+                      <Setter Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Grid.Style>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="140" />
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="崩溃参数" Style="{StaticResource FieldLabelStyle}" />
+              <TextBlock Grid.Column="0" Text="重启间隔(秒)" Style="{StaticResource FieldLabelStyle}" />
               <TextBox Grid.Column="1"
-                       materialDesign:HintAssist.Hint="重启延迟（秒）"
-                       Text="{Binding Draft.CrashRestartDelaySeconds, UpdateSourceTrigger=PropertyChanged}" />
+                         Text="{Binding Draft.CrashRestartDelaySeconds, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+              <Grid.Style>
+                <Style TargetType="Grid">
+                  <Setter Property="Visibility" Value="Collapsed" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding Draft.FailureAction}" Value="Restart">
+                      <Setter Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Grid.Style>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="重置失败计数" Style="{StaticResource FieldLabelStyle}" />
+              <Grid Grid.Column="1">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="12" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0"
+                           Text="{Binding Draft.ResetFailureValue, UpdateSourceTrigger=PropertyChanged}" />
+                <ComboBox Grid.Column="2"
+                            DisplayMemberPath="Display"
+                            SelectedValuePath="Value"
+                            ItemsSource="{Binding ResetFailureUnitOptions}"
+                            SelectedValue="{Binding Draft.ResetFailureUnit, Mode=TwoWay}" />
+              </Grid>
             </Grid>
           </StackPanel>
-        </materialDesign:Card>
-      </StackPanel>
-      </Grid>
-    </ScrollViewer>
+          </Grid>
+        </TabItem>
+
+        <TabItem Header="依赖">
+          <Grid HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="0.1*" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="0.1*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" Margin="0,24">
+            <TextBlock Opacity="0.7"
+                         TextWrapping="Wrap"
+                         Text="每行一个服务名，或用逗号/分号分隔。会生成多个 &lt;depend&gt; 元素。" />
+            <TextBox Margin="0,10,0,0"
+                       MinHeight="160"
+                       AcceptsReturn="True"
+                       TextWrapping="Wrap"
+                       VerticalScrollBarVisibility="Auto"
+                       Text="{Binding Draft.DependenciesText, UpdateSourceTrigger=PropertyChanged}" />
+          </StackPanel>
+          </Grid>
+        </TabItem>
+      </TabControl>
+    </materialDesign:Card>
+
 
     <Grid HorizontalAlignment="Stretch" Grid.Row="1"  Margin="0 20 20 0">
       <Grid.ColumnDefinitions>
@@ -276,6 +512,6 @@
           </TextBlock.Style>
         </TextBlock>
       </StackPanel>
-        </Grid>  
+    </Grid>
   </Grid>
 </UserControl>

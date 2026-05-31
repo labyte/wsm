@@ -24,7 +24,15 @@ public sealed class ServiceIdSuggester
         }
 
         var fileName = Path.GetFileNameWithoutExtension(executablePath) ?? "service";
-        var normalized = fileName.Trim().ToLowerInvariant();
+        return SuggestFromRawName(fileName);
+    }
+
+    /// <summary>
+    /// 从原始文本生成服务 ID（会进行格式标准化）。
+    /// </summary>
+    public string SuggestFromRawName(string? rawName)
+    {
+        var normalized = (rawName ?? string.Empty).Trim().ToLowerInvariant();
         normalized = InvalidCharPattern.Replace(normalized, "-");
         normalized = normalized.Trim('-');
 

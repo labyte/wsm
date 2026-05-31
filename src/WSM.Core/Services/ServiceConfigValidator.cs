@@ -39,6 +39,7 @@ public sealed class ServiceConfigValidator
         ValidateWorkingDirectory(service.WorkingDirectory, result);
         ValidateStopTimeout(service.StopTimeoutSeconds, result);
         ValidateLogPolicy(service.LogPolicy, result);
+        ValidateLogSource(service, result);
         ValidateFailurePolicy(service.FailurePolicy, result);
         ValidateRecoverySettings(service.RecoverySettings, result);
         ValidateEnvironmentVariables(service.EnvironmentVariables, result);
@@ -149,6 +150,29 @@ public sealed class ServiceConfigValidator
         if (policy.KeepFiles <= 0)
         {
             result.AddError(nameof(LogPolicy.KeepFiles), "日志保留文件数必须大于 0。");
+        }
+    }
+
+    private static void ValidateLogSource(ManagedService service, ValidationResult result)
+    {
+        if (service.LogSourceMode == ServiceLogSourceMode.WinSw)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(service.ExternalLogDirectoryPath))
+        {
+            result.AddError(nameof(ManagedService.ExternalLogDirectoryPath), "日志目录不能为空。");
+        }
+
+        if (string.IsNullOrWhiteSpace(service.ExternalLogFileExtensions))
+        {
+            result.AddError(nameof(ManagedService.ExternalLogFileExtensions), "日志扩展名不能为空。");
+        }
+
+        if (service.ExternalLogTailLines <= 0)
+        {
+            result.AddError(nameof(ManagedService.ExternalLogTailLines), "日志 Tail 行数必须大于 0。");
         }
     }
 

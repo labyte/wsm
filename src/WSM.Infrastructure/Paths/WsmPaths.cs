@@ -14,6 +14,8 @@ public sealed class WsmPaths
     public const string WinSwToolModeBundledX86 = "BundledX86";
     public const string WinSwToolModeBundledNet461 = "BundledNet461";
     public const string WinSwToolModeCustom = "Custom";
+    public const string DefaultRuleProgramName = "ProgramName";
+    public const string DefaultRulePrefixProgramName = "PrefixProgramName";
 
     private readonly object _sync = new object();
     private string _dataRoot = string.Empty;
@@ -25,6 +27,12 @@ public sealed class WsmPaths
     private bool _isCustomOperationLogPath;
     private string _winSwToolMode = WinSwToolModeBundledX64;
     private string _customWinSwPath = string.Empty;
+    private string _serviceIdRuleMode = DefaultRuleProgramName;
+    private string _serviceIdRulePrefix = "svc-";
+    private string _serviceNameRuleMode = DefaultRuleProgramName;
+    private string _serviceNameRulePrefix = string.Empty;
+    private string _serviceDescriptionRuleMode = DefaultRulePrefixProgramName;
+    private string _serviceDescriptionRulePrefix = "由 WSM 托管：";
 
     public WsmPaths()
     {
@@ -52,6 +60,37 @@ public sealed class WsmPaths
             _operationLogPath = Path.GetFullPath(configuredOperationLogPath!);
             _isCustomOperationLogPath = true;
         }
+
+        var configuredNaming = LoadConfiguredServiceNamingRules();
+        if (!string.IsNullOrWhiteSpace(configuredNaming.IdRuleMode))
+        {
+            _serviceIdRuleMode = configuredNaming.IdRuleMode!;
+        }
+
+        if (configuredNaming.IdPrefix != null)
+        {
+            _serviceIdRulePrefix = configuredNaming.IdPrefix;
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuredNaming.NameRuleMode))
+        {
+            _serviceNameRuleMode = configuredNaming.NameRuleMode!;
+        }
+
+        if (configuredNaming.NamePrefix != null)
+        {
+            _serviceNameRulePrefix = configuredNaming.NamePrefix;
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuredNaming.DescriptionRuleMode))
+        {
+            _serviceDescriptionRuleMode = configuredNaming.DescriptionRuleMode!;
+        }
+
+        if (configuredNaming.DescriptionPrefix != null)
+        {
+            _serviceDescriptionRulePrefix = configuredNaming.DescriptionPrefix;
+        }
     }
 
     /// <summary>
@@ -74,6 +113,18 @@ public sealed class WsmPaths
     public string WinSwToolMode => _winSwToolMode;
 
     public string CustomWinSwPath => _customWinSwPath;
+
+    public string ServiceIdRuleMode => _serviceIdRuleMode;
+
+    public string ServiceIdRulePrefix => _serviceIdRulePrefix;
+
+    public string ServiceNameRuleMode => _serviceNameRuleMode;
+
+    public string ServiceNameRulePrefix => _serviceNameRulePrefix;
+
+    public string ServiceDescriptionRuleMode => _serviceDescriptionRuleMode;
+
+    public string ServiceDescriptionRulePrefix => _serviceDescriptionRulePrefix;
 
     /// <summary>
     /// 应用目录内的 WinSW 源文件（构建时复制到输出目录）。
@@ -256,6 +307,70 @@ public sealed class WsmPaths
         return true;
     }
 
+    /// <summary>
+    /// 设置并持久化服务默认命名规则。
+    /// </summary>
+    public bool SetServiceNamingRules(
+        string idRuleMode,
+        string? idPrefix,
+        string nameRuleMode,
+        string? namePrefix,
+        string descriptionRuleMode,
+        string? descriptionPrefix)
+    {
+        if (string.IsNullOrWhiteSpace(idRuleMode))
+        {
+            throw new ArgumentException("服务 ID 默认规则不能为空。", nameof(idRuleMode));
+        }
+
+        if (string.IsNullOrWhiteSpace(nameRuleMode))
+        {
+            throw new ArgumentException("服务名称默认规则不能为空。", nameof(nameRuleMode));
+        }
+
+        if (string.IsNullOrWhiteSpace(descriptionRuleMode))
+        {
+            throw new ArgumentException("服务描述默认规则不能为空。", nameof(descriptionRuleMode));
+        }
+
+        var normalizedIdRule = idRuleMode.Trim();
+        var normalizedIdPrefix = (idPrefix ?? string.Empty).Trim();
+        var normalizedNameRule = nameRuleMode.Trim();
+        var normalizedNamePrefix = (namePrefix ?? string.Empty).Trim();
+        var normalizedDescriptionRule = descriptionRuleMode.Trim();
+        var normalizedDescriptionPrefix = (descriptionPrefix ?? string.Empty).Trim();
+
+        lock (_sync)
+        {
+            var unchanged = string.Equals(_serviceIdRuleMode, normalizedIdRule, StringComparison.Ordinal)
+                            && string.Equals(_serviceIdRulePrefix, normalizedIdPrefix, StringComparison.Ordinal)
+                            && string.Equals(_serviceNameRuleMode, normalizedNameRule, StringComparison.Ordinal)
+                            && string.Equals(_serviceNameRulePrefix, normalizedNamePrefix, StringComparison.Ordinal)
+                            && string.Equals(_serviceDescriptionRuleMode, normalizedDescriptionRule, StringComparison.Ordinal)
+                            && string.Equals(_serviceDescriptionRulePrefix, normalizedDescriptionPrefix, StringComparison.Ordinal);
+            if (unchanged)
+            {
+                return false;
+            }
+
+            _serviceIdRuleMode = normalizedIdRule;
+            _serviceIdRulePrefix = normalizedIdPrefix;
+            _serviceNameRuleMode = normalizedNameRule;
+            _serviceNameRulePrefix = normalizedNamePrefix;
+            _serviceDescriptionRuleMode = normalizedDescriptionRule;
+            _serviceDescriptionRulePrefix = normalizedDescriptionPrefix;
+            SaveConfiguredServiceNamingRules(
+                _serviceIdRuleMode,
+                _serviceIdRulePrefix,
+                _serviceNameRuleMode,
+                _serviceNameRulePrefix,
+                _serviceDescriptionRuleMode,
+                _serviceDescriptionRulePrefix);
+        }
+
+        return true;
+    }
+
     private void UpdateDerivedPaths(string dataRoot)
     {
         _dataRoot = dataRoot;
@@ -338,6 +453,15 @@ public sealed class WsmPaths
         return Path.Combine(appData, "operation-log-path.txt");
     }
 
+    private static string GetServiceNamingRulesConfigFilePath()
+    {
+        var appData = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "WSM");
+        Directory.CreateDirectory(appData);
+        return Path.Combine(appData, "service-naming-rules.txt");
+    }
+
     private static string? LoadConfiguredOperationLogPath()
     {
         var configPath = GetOperationLogConfigFilePath();
@@ -354,5 +478,43 @@ public sealed class WsmPaths
     {
         var configPath = GetOperationLogConfigFilePath();
         File.WriteAllText(configPath, operationLogPath ?? string.Empty);
+    }
+
+    private static (string? IdRuleMode, string? IdPrefix, string? NameRuleMode, string? NamePrefix, string? DescriptionRuleMode, string? DescriptionPrefix) LoadConfiguredServiceNamingRules()
+    {
+        var configPath = GetServiceNamingRulesConfigFilePath();
+        if (!File.Exists(configPath))
+        {
+            return (null, null, null, null, null, null);
+        }
+
+        var lines = File.ReadAllLines(configPath);
+        return (
+            lines.Length > 0 ? lines[0].Trim() : null,
+            lines.Length > 1 ? lines[1] : null,
+            lines.Length > 2 ? lines[2].Trim() : null,
+            lines.Length > 3 ? lines[3] : null,
+            lines.Length > 4 ? lines[4].Trim() : null,
+            lines.Length > 5 ? lines[5] : null);
+    }
+
+    private static void SaveConfiguredServiceNamingRules(
+        string idRuleMode,
+        string idPrefix,
+        string nameRuleMode,
+        string namePrefix,
+        string descriptionRuleMode,
+        string descriptionPrefix)
+    {
+        var configPath = GetServiceNamingRulesConfigFilePath();
+        File.WriteAllLines(configPath, new[]
+        {
+            idRuleMode ?? string.Empty,
+            idPrefix ?? string.Empty,
+            nameRuleMode ?? string.Empty,
+            namePrefix ?? string.Empty,
+            descriptionRuleMode ?? string.Empty,
+            descriptionPrefix ?? string.Empty
+        });
     }
 }

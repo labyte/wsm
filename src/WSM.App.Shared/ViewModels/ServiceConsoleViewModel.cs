@@ -20,17 +20,20 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
     private readonly IServiceRepository _serviceRepository;
     private readonly ServiceLogReader _logReader;
     private readonly ConsoleLogHelper _consoleLogHelper;
+    private readonly ISnackbarService _snackbarService;
     private readonly DispatcherTimer _refreshTimer;
     private string? _pendingServiceId;
 
     public ServiceConsoleViewModel(
         IServiceRepository serviceRepository,
         ServiceLogReader logReader,
-        ConsoleLogHelper consoleLogHelper)
+        ConsoleLogHelper consoleLogHelper,
+        ISnackbarService snackbarService)
     {
         _serviceRepository = serviceRepository;
         _logReader = logReader;
         _consoleLogHelper = consoleLogHelper;
+        _snackbarService = snackbarService;
         ServiceOptions = new ObservableCollection<ServiceConsoleOption> { ServiceConsoleOption.All };
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
@@ -74,10 +77,8 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
 
     partial void OnIsTrackingChanged(bool value)
     {
-        if (value)
-        {
-            _ = RefreshAsync();
-        }
+        // 勾选状态变化后立即刷新状态栏文案，确保“实时跟踪/暂停跟踪”同步显示。
+        _ = RefreshAsync();
     }
 
     partial void OnSelectedMaxLinesChanged(int value)
@@ -127,7 +128,34 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
                 return;
             }
 
-            var logLines = _logReader.ReadMergedLogs(serviceIds, SelectedMaxLines);
+            var serviceConfigs = await _serviceRepository.GetAllAsync().ConfigureAwait(true);
+            var serviceConfigMap = serviceConfigs.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase);
+            var externalLogFiles = BuildExternalLogFileMap(serviceIds, serviceConfigMap);
+            var effectiveMaxLines = SelectedMaxLines;
+
+            foreach (var serviceId in serviceIds)
+            {
+                if (!serviceConfigMap.TryGetValue(serviceId, out var config))
+                {
+                    continue;
+                }
+
+                if (config.LogSourceMode != WSM.Core.Models.ServiceLogSourceMode.ExternalFile)
+                {
+                    continue;
+                }
+
+                if (serviceIds.Count == 1 && config.ExternalLogTailLines > 0)
+                {
+                    effectiveMaxLines = config.ExternalLogTailLines;
+                    if (IsTracking != config.ExternalLogRealtimeTracking)
+                    {
+                        IsTracking = config.ExternalLogRealtimeTracking;
+                    }
+                }
+            }
+
+            var logLines = _logReader.ReadMergedLogs(serviceIds, externalLogFiles, effectiveMaxLines);
             var effectiveLines = logLines
                 .SelectMany(x => SplitToNonEmptyLines(x.DisplayText))
                 .ToList();
@@ -140,7 +168,7 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
                 ? "全部服务"
                 : SelectedService.DisplayName;
             var trackText = IsTracking ? "实时跟踪" : "暂停跟踪";
-            StatusText = $"{scopeText} · {effectiveLines.Count}/{SelectedMaxLines} 行 · {trackText}";
+            StatusText = $"{scopeText} · {effectiveLines.Count}/{effectiveMaxLines} 行 · {trackText}";
         }
         finally
         {
@@ -165,19 +193,43 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
     private async Task ClearAsync()
     {
         var serviceIds = ResolveTargetServiceIds();
+        var managedClearResult = new LogClearResult();
+        var externalClearResult = new LogClearResult();
         if (serviceIds.Count > 0)
         {
-            await Task.Run(() => _logReader.ClearLogs(serviceIds)).ConfigureAwait(true);
+            var serviceConfigs = await _serviceRepository.GetAllAsync().ConfigureAwait(true);
+            var serviceConfigMap = serviceConfigs.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase);
+            var externalLogFiles = BuildExternalLogFileMap(serviceIds, serviceConfigMap);
+
+            managedClearResult = await Task.Run(() => _logReader.ClearLogsDetailed(serviceIds)).ConfigureAwait(true);
+            externalClearResult = await Task.Run(() => _logReader.ClearLogFilesDetailed(externalLogFiles.Values)).ConfigureAwait(true);
         }
 
+        var clearedCount = managedClearResult.ClearedCount + externalClearResult.ClearedCount;
+        var failures = managedClearResult.Failures
+            .Concat(externalClearResult.Failures)
+            .GroupBy(x => x.FilePath, StringComparer.OrdinalIgnoreCase)
+            .Select(x => x.First())
+            .ToList();
+
         DisplayText = string.Empty;
-        StatusText = "日志已清空（文件内容已删除）";
+        StatusText = clearedCount > 0
+            ? $"日志已清空（共清理 {clearedCount} 个文件）"
+            : "未清理到可写日志文件，请确认服务日志目录与权限。";
+
+        if (failures.Count > 0)
+        {
+            var preview = string.Join(Environment.NewLine, failures
+                .Take(5)
+                .Select(x => $"{x.FilePath}（{x.Reason}）"));
+            var moreHint = failures.Count > 5 ? $"{Environment.NewLine}... 其余 {failures.Count - 5} 个文件未展示" : string.Empty;
+            _snackbarService.ShowWarning("以下日志文件清空失败：" + Environment.NewLine + preview + moreHint);
+        }
     }
 
     private async Task LoadServicesAsync()
     {
         var services = await _serviceRepository.GetAllAsync().ConfigureAwait(true);
-        var discoveredIds = _logReader.DiscoverServiceIdsWithLogs();
         var currentId = _pendingServiceId ?? SelectedService?.ServiceId;
 
         ServiceOptions.Clear();
@@ -186,16 +238,6 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
         foreach (var service in services.OrderBy(x => x.DisplayName))
         {
             ServiceOptions.Add(new ServiceConsoleOption(service.Id, service.DisplayName));
-        }
-
-        foreach (var serviceId in discoveredIds)
-        {
-            if (ServiceOptions.Any(x => string.Equals(x.ServiceId, serviceId, StringComparison.OrdinalIgnoreCase)))
-            {
-                continue;
-            }
-
-            ServiceOptions.Add(new ServiceConsoleOption(serviceId, serviceId));
         }
 
         SelectedService = ServiceOptions.FirstOrDefault(x => x.ServiceId == currentId)
@@ -238,7 +280,44 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
             return configuredServiceIds;
         }
 
-        return _logReader.DiscoverServiceIdsWithLogs().ToList();
+        return new System.Collections.Generic.List<string>();
+    }
+
+    private System.Collections.Generic.Dictionary<string, string> BuildExternalLogFileMap(
+        System.Collections.Generic.IReadOnlyList<string> serviceIds,
+        System.Collections.Generic.IReadOnlyDictionary<string, Core.Models.ManagedService> serviceConfigMap)
+    {
+        var externalLogFiles = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var serviceId in serviceIds)
+        {
+            if (!serviceConfigMap.TryGetValue(serviceId, out var config))
+            {
+                continue;
+            }
+
+            if (config.LogSourceMode != Core.Models.ServiceLogSourceMode.ExternalFile)
+            {
+                continue;
+            }
+
+            var externalLogPath = _logReader.ResolveLatestExternalLogFile(
+                config.ExternalLogDirectoryPath,
+                config.ExternalLogFileExtensions);
+            if (string.IsNullOrWhiteSpace(externalLogPath)
+                && !string.IsNullOrWhiteSpace(config.ExternalLogFilePath))
+            {
+                // 兼容旧配置：若未配置目录规则，则回退到历史的单文件路径。
+                externalLogPath = config.ExternalLogFilePath;
+            }
+
+            if (!string.IsNullOrWhiteSpace(externalLogPath))
+            {
+                externalLogFiles[serviceId] = externalLogPath ?? string.Empty;
+            }
+        }
+
+        return externalLogFiles;
     }
 
     private static System.Collections.Generic.IEnumerable<string> SplitToNonEmptyLines(string text)

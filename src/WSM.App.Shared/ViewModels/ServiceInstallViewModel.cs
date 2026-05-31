@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Forms = System.Windows.Forms;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
@@ -11,6 +12,7 @@ using WSM.App.Shared.Services;
 using WSM.Core.Interfaces;
 using WSM.Core.Models;
 using WSM.Core.Services;
+using WSM.Infrastructure.Paths;
 
 namespace WSM.App.Shared.ViewModels;
 
@@ -24,6 +26,7 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
     private readonly ISnackbarService _snackbarService;
     private readonly INavigationService _navigationService;
     private readonly AdminElevationService _adminElevation;
+    private readonly WsmPaths _paths;
     private readonly ServiceConfigValidator _validator = new ServiceConfigValidator();
     private readonly ServiceIdSuggester _idSuggester = new ServiceIdSuggester();
 
@@ -32,13 +35,15 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
         IServiceRepository serviceRepository,
         ISnackbarService snackbarService,
         INavigationService navigationService,
-        AdminElevationService adminElevation)
+        AdminElevationService adminElevation,
+        WsmPaths paths)
     {
         _winSwHostService = winSwHostService;
         _serviceRepository = serviceRepository;
         _snackbarService = snackbarService;
         _navigationService = navigationService;
         _adminElevation = adminElevation;
+        _paths = paths;
         Draft.PropertyChanged += DraftOnPropertyChanged;
         RefreshInstallPermissionState();
         ResetForm();
@@ -73,7 +78,20 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
     [ObservableProperty]
     private string _installPermissionHintText = string.Empty;
 
-    public Array StartModeOptions => Enum.GetValues(typeof(ManagedServiceStartMode));
+    public System.Collections.Generic.IReadOnlyList<DisplayOption<ManagedServiceStartMode>> StartModeOptions =>
+        ServiceConfigUiOptions.StartModeOptions;
+
+    public System.Collections.Generic.IReadOnlyList<DisplayOption<ServiceLogSourceMode>> LogSourceOptions =>
+        ServiceConfigUiOptions.LogSourceOptions;
+
+    public System.Collections.Generic.IReadOnlyList<DisplayOption<LogMode>> WinSwLogModeOptions =>
+        ServiceConfigUiOptions.WinSwLogModeOptions;
+
+    public System.Collections.Generic.IReadOnlyList<DisplayOption<FailureActionType>> FailureActionOptions =>
+        ServiceConfigUiOptions.FailureActionOptions;
+
+    public System.Collections.Generic.IReadOnlyList<DisplayOption<string>> ResetFailureUnitOptions =>
+        ServiceConfigUiOptions.ResetFailureUnitOptions;
 
     [ObservableProperty]
     private string _executablePathError = string.Empty;
@@ -111,10 +129,26 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
             Draft.ExecutablePath = dialog.FileName;
             Draft.WorkingDirectory = Path.GetDirectoryName(dialog.FileName) ?? string.Empty;
             Draft.Arguments = string.Empty;
-            Draft.Id = _idSuggester.SuggestFromExecutablePath(dialog.FileName);
-            Draft.DisplayName = Path.GetFileNameWithoutExtension(dialog.FileName);
-            Draft.Description = $"由 WSM 托管：{Path.GetFileName(dialog.FileName)}";
+            var programName = Path.GetFileNameWithoutExtension(dialog.FileName);
+            Draft.Id = BuildDefaultServiceId(programName);
+            Draft.DisplayName = BuildDefaultText(programName, _paths.ServiceNameRuleMode, _paths.ServiceNameRulePrefix);
+            Draft.Description = BuildDefaultText(programName, _paths.ServiceDescriptionRuleMode, _paths.ServiceDescriptionRulePrefix);
             ValidateAllFields(showSnackbar: false);
+        }
+    }
+
+    [RelayCommand]
+    private void BrowseExternalLogDirectory()
+    {
+        using var dialog = new Forms.FolderBrowserDialog
+        {
+            Description = "请选择日志目录",
+            SelectedPath = Draft.ExternalLogDirectoryPath
+        };
+
+        if (dialog.ShowDialog() == Forms.DialogResult.OK)
+        {
+            Draft.ExternalLogDirectoryPath = dialog.SelectedPath;
         }
     }
 
@@ -242,6 +276,22 @@ public partial class ServiceInstallViewModel : ObservableObject, INavigationAwar
 
         Draft.ApplyTo(service);
         return service;
+    }
+
+    private string BuildDefaultServiceId(string programName)
+    {
+        var raw = BuildDefaultText(programName, _paths.ServiceIdRuleMode, _paths.ServiceIdRulePrefix);
+        return _idSuggester.SuggestFromRawName(raw);
+    }
+
+    private static string BuildDefaultText(string programName, string ruleMode, string prefix)
+    {
+        if (string.Equals(ruleMode, WsmPaths.DefaultRulePrefixProgramName, StringComparison.OrdinalIgnoreCase))
+        {
+            return (prefix ?? string.Empty) + programName;
+        }
+
+        return programName;
     }
 
     private void ResetForm()

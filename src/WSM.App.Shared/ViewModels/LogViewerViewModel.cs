@@ -21,16 +21,19 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
     private readonly IServiceRepository _serviceRepository;
     private readonly ServiceLogReader _logReader;
     private readonly ConsoleLogHelper _consoleLogHelper;
+    private readonly ISnackbarService _snackbarService;
     private readonly DispatcherTimer _refreshTimer;
 
     public LogViewerViewModel(
         IServiceRepository serviceRepository,
         ServiceLogReader logReader,
-        ConsoleLogHelper consoleLogHelper)
+        ConsoleLogHelper consoleLogHelper,
+        ISnackbarService snackbarService)
     {
         _serviceRepository = serviceRepository;
         _logReader = logReader;
         _consoleLogHelper = consoleLogHelper;
+        _snackbarService = snackbarService;
         ServiceOptions = new ObservableCollection<ServiceConsoleOption> { ServiceConsoleOption.All };
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _refreshTimer.Tick += (_, _) =>
@@ -83,11 +86,25 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
     private async Task ClearAsync()
     {
         var serviceIds = ResolveTargetServiceIds();
+        var clearResult = new LogClearResult();
         if (serviceIds.Count > 0)
         {
-            var clearedCount = await Task.Run(() => _logReader.ClearWrapperLogs(serviceIds)).ConfigureAwait(true);
+            clearResult = await Task.Run(() => _logReader.ClearWrapperLogsDetailed(serviceIds)).ConfigureAwait(true);
             DisplayText = string.Empty;
-            StatusText = $"WSM 操作日志已清空（已处理 {clearedCount} 个 wrapper 文件）";
+            StatusText = clearResult.ClearedCount > 0
+                ? $"WSM 操作日志已清空（已处理 {clearResult.ClearedCount} 个 wrapper 文件）"
+                : "未清理到可写 wrapper 日志文件，请确认文件占用与权限。";
+
+            if (clearResult.Failures.Count > 0)
+            {
+                var preview = string.Join(Environment.NewLine, clearResult.Failures
+                    .Take(5)
+                    .Select(x => $"{x.FilePath}（{x.Reason}）"));
+                var moreHint = clearResult.Failures.Count > 5
+                    ? $"{Environment.NewLine}... 其余 {clearResult.Failures.Count - 5} 个文件未展示"
+                    : string.Empty;
+                _snackbarService.ShowWarning("以下 wrapper 日志文件清空失败：" + Environment.NewLine + preview + moreHint);
+            }
             return;
         }
 
@@ -157,16 +174,13 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
 
     partial void OnIsTrackingChanged(bool value)
     {
-        if (value)
-        {
-            _ = RefreshAsync();
-        }
+        // 实时跟踪勾选变化后立即刷新，确保标题状态文本同步。
+        _ = RefreshAsync();
     }
 
     private async Task LoadServicesAsync()
     {
         var services = await _serviceRepository.GetAllAsync().ConfigureAwait(true);
-        var discoveredIds = _logReader.DiscoverServiceIdsWithWrapperLogs();
         var currentId = SelectedService?.ServiceId;
 
         ServiceOptions.Clear();
@@ -175,16 +189,6 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
         foreach (var service in services.OrderBy(x => x.DisplayName))
         {
             ServiceOptions.Add(new ServiceConsoleOption(service.Id, service.DisplayName));
-        }
-
-        foreach (var serviceId in discoveredIds)
-        {
-            if (ServiceOptions.Any(x => string.Equals(x.ServiceId, serviceId, StringComparison.OrdinalIgnoreCase)))
-            {
-                continue;
-            }
-
-            ServiceOptions.Add(new ServiceConsoleOption(serviceId, serviceId));
         }
 
         SelectedService = ServiceOptions.FirstOrDefault(x => x.ServiceId == currentId)
@@ -209,6 +213,6 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
             return serviceIds;
         }
 
-        return _logReader.DiscoverServiceIdsWithWrapperLogs().ToList();
+        return new List<string>();
     }
 }

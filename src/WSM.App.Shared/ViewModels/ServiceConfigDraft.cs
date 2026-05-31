@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using WSM.Core.Models;
@@ -51,8 +54,48 @@ public partial class ServiceConfigDraft : ObservableObject
     [ObservableProperty]
     private int _crashRestartDelaySeconds = 5;
 
+    [ObservableProperty]
+    private FailureActionType _failureAction = FailureActionType.Restart;
+
+    [ObservableProperty]
+    private int _resetFailureValue = 1;
+
+    [ObservableProperty]
+    private string _resetFailureUnit = "hour";
+
+    [ObservableProperty]
+    private string _dependenciesText = string.Empty;
+
+    [ObservableProperty]
+    private ServiceLogSourceMode _logSourceMode = ServiceLogSourceMode.WinSw;
+
+    [ObservableProperty]
+    private LogMode _logMode = LogMode.RollBySize;
+
+    [ObservableProperty]
+    private int _logSizeThresholdKb = 10240;
+
+    [ObservableProperty]
+    private int _logKeepFiles = 10;
+
+    [ObservableProperty]
+    private string _externalLogFilePath = string.Empty;
+
+    [ObservableProperty]
+    private string _externalLogDirectoryPath = string.Empty;
+
+    [ObservableProperty]
+    private string _externalLogFileExtensions = ".log;.txt";
+
+    [ObservableProperty]
+    private bool _externalLogRealtimeTracking = true;
+
+    [ObservableProperty]
+    private int _externalLogTailLines = 500;
+
     public static ServiceConfigDraft FromManagedService(ManagedService service)
     {
+        var (resetValue, resetUnit) = ParseResetFailure(service.FailurePolicy?.ResetFailurePeriod);
         return new ServiceConfigDraft
         {
             Id = service.Id,
@@ -68,7 +111,22 @@ public partial class ServiceConfigDraft : ObservableObject
             StopTimeoutSeconds = service.StopTimeoutSeconds,
             StartAfterInstall = service.StartAfterInstall,
             EnableCrashRecovery = service.RecoverySettings.EnableCrashRecovery,
-            CrashRestartDelaySeconds = GetCrashRestartDelaySeconds(service.FailurePolicy)
+            CrashRestartDelaySeconds = GetCrashRestartDelaySeconds(service.FailurePolicy),
+            FailureAction = GetFailureAction(service.FailurePolicy),
+            ResetFailureValue = resetValue,
+            ResetFailureUnit = resetUnit,
+            DependenciesText = string.Join(Environment.NewLine, service.Dependencies.Where(x => !string.IsNullOrWhiteSpace(x))),
+            LogSourceMode = service.LogSourceMode,
+            LogMode = service.LogPolicy.Mode,
+            LogSizeThresholdKb = service.LogPolicy.SizeThresholdKb,
+            LogKeepFiles = service.LogPolicy.KeepFiles,
+            ExternalLogFilePath = service.ExternalLogFilePath,
+            ExternalLogDirectoryPath = service.ExternalLogDirectoryPath,
+            ExternalLogFileExtensions = string.IsNullOrWhiteSpace(service.ExternalLogFileExtensions)
+                ? ".log;.txt"
+                : service.ExternalLogFileExtensions,
+            ExternalLogRealtimeTracking = service.ExternalLogRealtimeTracking,
+            ExternalLogTailLines = service.ExternalLogTailLines > 0 ? service.ExternalLogTailLines : 500
         };
     }
 
@@ -99,6 +157,47 @@ public partial class ServiceConfigDraft : ObservableObject
             return false;
         }
 
+        if (ResetFailureValue <= 0)
+        {
+            error = "失败计数重置值必须大于 0。";
+            return false;
+        }
+
+        if (LogSourceMode == ServiceLogSourceMode.WinSw)
+        {
+            if (LogSizeThresholdKb <= 0)
+            {
+                error = "WinSW 日志大小阈值必须大于 0 KB。";
+                return false;
+            }
+
+            if (LogKeepFiles <= 0)
+            {
+                error = "WinSW 日志保留文件数必须大于 0。";
+                return false;
+            }
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(ExternalLogDirectoryPath))
+            {
+                error = "外部日志目录不能为空。";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(ExternalLogFileExtensions))
+            {
+                error = "外部日志扩展名不能为空。";
+                return false;
+            }
+
+            if (ExternalLogTailLines <= 0)
+            {
+                error = "外部日志 tail 行数必须大于 0。";
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -115,12 +214,22 @@ public partial class ServiceConfigDraft : ObservableObject
         service.HideWindow = HideWindow;
         service.StopTimeoutSeconds = StopTimeoutSeconds;
         service.StartAfterInstall = StartAfterInstall;
+        service.Dependencies = ParseDependencies(DependenciesText);
+        service.LogSourceMode = LogSourceMode;
+        service.ExternalLogFilePath = ExternalLogFilePath.Trim();
+        service.ExternalLogDirectoryPath = ExternalLogDirectoryPath.Trim();
+        service.ExternalLogFileExtensions = NormalizeExtensions(ExternalLogFileExtensions);
+        service.ExternalLogRealtimeTracking = ExternalLogRealtimeTracking;
+        service.ExternalLogTailLines = Math.Max(1, ExternalLogTailLines);
+        service.LogPolicy = BuildLogPolicy(LogSourceMode, LogMode, LogSizeThresholdKb, LogKeepFiles);
         service.FailurePolicy = BuildFailurePolicy(
-            EnableCrashRecovery,
-            CrashRestartDelaySeconds);
+            FailureAction,
+            CrashRestartDelaySeconds,
+            ResetFailureValue,
+            ResetFailureUnit);
         service.RecoverySettings = new ServiceRecoverySettings
         {
-            EnableCrashRecovery = EnableCrashRecovery,
+            EnableCrashRecovery = FailureAction == FailureActionType.Restart,
             CrashRestartDelaySeconds = CrashRestartDelaySeconds,
             CrashMaxRestartCount = 1,
             EnableHangRecovery = false,
@@ -131,30 +240,60 @@ public partial class ServiceConfigDraft : ObservableObject
         };
     }
 
-    public static FailurePolicy BuildFailurePolicy(bool enableCrashRecovery, int delaySeconds)
+    public static FailurePolicy BuildFailurePolicy(
+        FailureActionType action,
+        int delaySeconds,
+        int resetFailureValue,
+        string resetFailureUnit)
     {
-        if (!enableCrashRecovery)
+        var normalizedAction = action == FailureActionType.None
+            ? FailureActionType.None
+            : FailureActionType.Restart;
+
+        if (normalizedAction == FailureActionType.None)
         {
-            return FailurePolicy.CreateFromTemplate(FailurePolicyTemplate.MonitorOnly);
+            return new FailurePolicy
+            {
+                ResetFailurePeriod = BuildResetFailurePeriod(resetFailureValue, resetFailureUnit),
+                Actions = new List<FailureActionEntry>
+                {
+                    new FailureActionEntry
+                    {
+                        Action = FailureActionType.None,
+                        Delay = "0 sec"
+                    }
+                }
+            };
         }
 
         return new FailurePolicy
         {
-            ResetFailurePeriod = "1 hour",
-            Actions = new System.Collections.Generic.List<FailureActionEntry>
+            ResetFailurePeriod = BuildResetFailurePeriod(resetFailureValue, resetFailureUnit),
+            Actions = new List<FailureActionEntry>
             {
                 new FailureActionEntry
                 {
                     Action = FailureActionType.Restart,
-                    Delay = $"{System.Math.Max(1, delaySeconds)} sec"
+                    Delay = $"{Math.Max(1, delaySeconds)} sec"
                 }
             }
         };
     }
 
-    private static int GetCrashRestartDelaySeconds(FailurePolicy failurePolicy)
+    public static LogPolicy BuildLogPolicy(ServiceLogSourceMode sourceMode, LogMode logMode, int sizeThresholdKb, int keepFiles)
     {
-        var restartAction = failurePolicy.Actions.FirstOrDefault(x => x.Action == FailureActionType.Restart);
+        return new LogPolicy
+        {
+            // 服务自身日志模式下，WinSW 日志应禁用，避免重复落盘。
+            Mode = sourceMode == ServiceLogSourceMode.ExternalFile ? LogMode.Ignore : logMode,
+            SizeThresholdKb = Math.Max(1, sizeThresholdKb),
+            KeepFiles = Math.Max(1, keepFiles)
+        };
+    }
+
+    private static int GetCrashRestartDelaySeconds(FailurePolicy? failurePolicy)
+    {
+        var restartAction = failurePolicy?.Actions?.FirstOrDefault(x => x.Action == FailureActionType.Restart);
         if (restartAction == null || string.IsNullOrWhiteSpace(restartAction.Delay))
         {
             return 5;
@@ -168,5 +307,108 @@ public partial class ServiceConfigDraft : ObservableObject
         }
 
         return int.TryParse(tokens[0], out var seconds) && seconds > 0 ? seconds : 5;
+    }
+
+    private static FailureActionType GetFailureAction(FailurePolicy? failurePolicy)
+    {
+        var action = failurePolicy?.Actions?.FirstOrDefault();
+        if (action == null)
+        {
+            return FailureActionType.Restart;
+        }
+
+        return action.Action == FailureActionType.None
+            ? FailureActionType.None
+            : FailureActionType.Restart;
+    }
+
+    private static (int Value, string Unit) ParseResetFailure(string? resetFailure)
+    {
+        if (string.IsNullOrWhiteSpace(resetFailure))
+        {
+            return (1, "hour");
+        }
+
+        var normalized = resetFailure ?? string.Empty;
+        var tokens = normalized.Trim()
+            .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Length < 2 || !int.TryParse(tokens[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) || value <= 0)
+        {
+            return (1, "hour");
+        }
+
+        var unitToken = tokens[1].ToLowerInvariant();
+        if (unitToken.StartsWith("min", StringComparison.Ordinal))
+        {
+            return (value, "minute");
+        }
+
+        if (unitToken.StartsWith("day", StringComparison.Ordinal))
+        {
+            return (value, "day");
+        }
+
+        if (unitToken.StartsWith("month", StringComparison.Ordinal))
+        {
+            return (value, "month");
+        }
+
+        return (value, "hour");
+    }
+
+    private static string BuildResetFailurePeriod(int value, string unit)
+    {
+        var normalizedValue = Math.Max(1, value);
+        var normalizedUnit = (unit ?? "hour").Trim().ToLowerInvariant();
+        var singular = normalizedUnit switch
+        {
+            "minute" => "minute",
+            "day" => "day",
+            "month" => "month",
+            _ => "hour"
+        };
+
+        if (normalizedValue == 1)
+        {
+            return $"{normalizedValue} {singular}";
+        }
+
+        return $"{normalizedValue} {singular}s";
+    }
+
+    private static List<string> ParseDependencies(string? dependenciesText)
+    {
+        if (string.IsNullOrWhiteSpace(dependenciesText))
+        {
+            return new List<string>();
+        }
+
+        var normalized = dependenciesText ?? string.Empty;
+        return normalized
+            .Split(new[] { '\r', '\n', ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => x.Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static string NormalizeExtensions(string? extensionsText)
+    {
+        if (string.IsNullOrWhiteSpace(extensionsText))
+        {
+            return ".log;.txt";
+        }
+
+        var normalizedInput = extensionsText ?? string.Empty;
+        var normalized = normalizedInput
+            .Split(new[] { ';', ',', '|', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => x.Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.StartsWith(".") ? x.ToLowerInvariant() : "." + x.ToLowerInvariant())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return normalized.Count == 0
+            ? ".log;.txt"
+            : string.Join(";", normalized);
     }
 }

@@ -116,9 +116,16 @@ public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
     private static void WriteLogSection(XmlWriter writer, LogPolicy policy)
     {
         writer.WriteStartElement("log");
-        writer.WriteAttributeString("mode", MapLogMode(policy.Mode));
-        WriteElement(writer, "sizeThreshold", policy.SizeThresholdKb.ToString(CultureInfo.InvariantCulture));
-        WriteElement(writer, "keepFiles", policy.KeepFiles.ToString(CultureInfo.InvariantCulture));
+        var mode = MapLogMode(policy.Mode);
+        writer.WriteAttributeString("mode", mode);
+
+        // none 模式下不应写入轮转相关参数，避免产生无效配置。
+        if (!string.Equals(mode, "none", StringComparison.OrdinalIgnoreCase))
+        {
+            WriteElement(writer, "sizeThreshold", policy.SizeThresholdKb.ToString(CultureInfo.InvariantCulture));
+            WriteElement(writer, "keepFiles", policy.KeepFiles.ToString(CultureInfo.InvariantCulture));
+        }
+
         writer.WriteEndElement();
     }
 
@@ -200,7 +207,7 @@ public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
             case LogMode.Reset:
                 return "reset";
             case LogMode.Ignore:
-                return "ignore";
+                return "none";
             case LogMode.Roll:
                 return "roll";
             case LogMode.RollByTime:

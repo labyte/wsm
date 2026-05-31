@@ -457,26 +457,135 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
             Opacity = 0.78,
             TextWrapping = TextWrapping.Wrap
         });
+        var tabs = new TabControl();
 
-        container.Children.Add(CreateLabeledTextBox("显示名称", state.DisplayName, value => state.DisplayName = value));
-        container.Children.Add(CreateLabeledTextBox("描述", state.Description, value => state.Description = value));
-        container.Children.Add(CreateLabeledTextBox("可执行路径", state.ExecutablePath, value => state.ExecutablePath = value));
-        container.Children.Add(CreateLabeledTextBox("工作目录", state.WorkingDirectory, value => state.WorkingDirectory = value));
-        container.Children.Add(CreateLabeledTextBox("启动参数", state.Arguments, value => state.Arguments = value));
-        container.Children.Add(CreateLabeledComboBox("启动类型", state.StartMode, value => state.StartMode = value));
-        container.Children.Add(CreateLabeledCheckBox("启用延迟自动启动", state.DelayedAutoStart, value => state.DelayedAutoStart = value));
-        container.Children.Add(CreateLabeledCheckBox("启用自动刷新配置（autoRefresh）", state.AutoRefresh, value => state.AutoRefresh = value));
-        container.Children.Add(CreateLabeledCheckBox("隐藏程序窗口（hidewindow）", state.HideWindow, value => state.HideWindow = value));
-        container.Children.Add(CreateLabeledIntTextBox("停止超时（秒）", state.StopTimeoutSeconds, value => state.StopTimeoutSeconds = value));
-        container.Children.Add(CreateLabeledCheckBox("安装后自动启动", state.StartAfterInstall, value => state.StartAfterInstall = value));
-        container.Children.Add(new TextBlock
+        var basicPanel = new StackPanel { Margin = new Thickness(12, 8, 12, 8) };
+        basicPanel.Children.Add(CreateLabeledTextBox("显示名称", state.DisplayName, value => state.DisplayName = value));
+        basicPanel.Children.Add(CreateLabeledTextBox("描述", state.Description, value => state.Description = value));
+        basicPanel.Children.Add(CreateLabeledTextBox("可执行路径", state.ExecutablePath, value => state.ExecutablePath = value));
+        basicPanel.Children.Add(CreateLabeledTextBox("工作目录", state.WorkingDirectory, value => state.WorkingDirectory = value));
+        basicPanel.Children.Add(CreateLabeledTextBox("启动参数", state.Arguments, value => state.Arguments = value));
+        basicPanel.Children.Add(CreateLabeledOptionComboBox(
+            "启动类型",
+            state.StartMode,
+            ServiceConfigUiOptions.StartModeOptions,
+            value => state.StartMode = value));
+        basicPanel.Children.Add(CreateLabeledCheckBox("启用延迟自动启动", state.DelayedAutoStart, value => state.DelayedAutoStart = value));
+        basicPanel.Children.Add(CreateLabeledCheckBox("启用自动刷新配置（autoRefresh）", state.AutoRefresh, value => state.AutoRefresh = value));
+        basicPanel.Children.Add(CreateLabeledCheckBox("隐藏程序窗口（hidewindow）", state.HideWindow, value => state.HideWindow = value));
+        basicPanel.Children.Add(CreateLabeledIntTextBox("停止超时（秒）", state.StopTimeoutSeconds, value => state.StopTimeoutSeconds = value));
+        basicPanel.Children.Add(CreateLabeledCheckBox("安装后自动启动", state.StartAfterInstall, value => state.StartAfterInstall = value));
+        tabs.Items.Add(new TabItem { Header = "基本", Content = new ScrollViewer { Content = basicPanel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } });
+
+        var logPanel = new StackPanel { Margin = new Thickness(12, 8, 12, 8) };
+        logPanel.Children.Add(CreateLabeledOptionComboBox(
+            "日志方案",
+            state.LogSourceMode,
+            ServiceConfigUiOptions.LogSourceOptions,
+            value => state.LogSourceMode = value));
+        var logModeEditor = CreateLabeledOptionComboBox(
+            "WinSW 模式",
+            state.LogMode,
+            ServiceConfigUiOptions.WinSwLogModeOptions,
+            value => state.LogMode = value);
+        var logSizeEditor = CreateLabeledIntTextBox("大小阈值（KB）", state.LogSizeThresholdKb, value => state.LogSizeThresholdKb = value);
+        var logKeepFilesEditor = CreateLabeledIntTextBox("保留文件数", state.LogKeepFiles, value => state.LogKeepFiles = value);
+        var externalLogDirectoryEditor = CreateLabeledTextBox("日志目录", state.ExternalLogDirectoryPath, value => state.ExternalLogDirectoryPath = value);
+        var externalLogExtensionsEditor = CreateLabeledTextBox("扩展名匹配", state.ExternalLogFileExtensions, value => state.ExternalLogFileExtensions = value);
+        var externalLogTrackEditor = CreateLabeledCheckBox("启用", state.ExternalLogRealtimeTracking, value => state.ExternalLogRealtimeTracking = value);
+        var externalLogTailEditor = CreateLabeledIntTextBox("Tail 行数", state.ExternalLogTailLines, value => state.ExternalLogTailLines = value);
+        logPanel.Children.Add(logModeEditor);
+        logPanel.Children.Add(logSizeEditor);
+        logPanel.Children.Add(logKeepFilesEditor);
+        logPanel.Children.Add(externalLogDirectoryEditor);
+        logPanel.Children.Add(externalLogExtensionsEditor);
+        logPanel.Children.Add(externalLogTrackEditor);
+        logPanel.Children.Add(externalLogTailEditor);
+
+        BindConditionalVisibility(
+            state,
+            logModeEditor,
+            x => x.LogSourceMode == ServiceLogSourceMode.WinSw,
+            nameof(ServiceConfigDraft.LogSourceMode));
+        BindConditionalVisibility(
+            state,
+            logSizeEditor,
+            x => x.LogSourceMode == ServiceLogSourceMode.WinSw && IsWinSwRotationMode(x.LogMode),
+            nameof(ServiceConfigDraft.LogSourceMode),
+            nameof(ServiceConfigDraft.LogMode));
+        BindConditionalVisibility(
+            state,
+            logKeepFilesEditor,
+            x => x.LogSourceMode == ServiceLogSourceMode.WinSw && IsWinSwRotationMode(x.LogMode),
+            nameof(ServiceConfigDraft.LogSourceMode),
+            nameof(ServiceConfigDraft.LogMode));
+        BindConditionalVisibility(
+            state,
+            externalLogDirectoryEditor,
+            x => x.LogSourceMode == ServiceLogSourceMode.ExternalFile,
+            nameof(ServiceConfigDraft.LogSourceMode));
+        BindConditionalVisibility(
+            state,
+            externalLogExtensionsEditor,
+            x => x.LogSourceMode == ServiceLogSourceMode.ExternalFile,
+            nameof(ServiceConfigDraft.LogSourceMode));
+        BindConditionalVisibility(
+            state,
+            externalLogTrackEditor,
+            x => x.LogSourceMode == ServiceLogSourceMode.ExternalFile,
+            nameof(ServiceConfigDraft.LogSourceMode));
+        BindConditionalVisibility(
+            state,
+            externalLogTailEditor,
+            x => x.LogSourceMode == ServiceLogSourceMode.ExternalFile,
+            nameof(ServiceConfigDraft.LogSourceMode));
+        tabs.Items.Add(new TabItem { Header = "日志", Content = new ScrollViewer { Content = logPanel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } });
+
+        var restartPanel = new StackPanel { Margin = new Thickness(12, 8, 12, 8) };
+        restartPanel.Children.Add(CreateLabeledOptionComboBox(
+            "失败动作",
+            state.FailureAction,
+            ServiceConfigUiOptions.FailureActionOptions,
+            value => state.FailureAction = value));
+        var restartDelayEditor = CreateLabeledIntTextBox("重启间隔（秒）", state.CrashRestartDelaySeconds, value => state.CrashRestartDelaySeconds = value);
+        var resetFailureValueEditor = CreateLabeledIntTextBox("重置失败计数值", state.ResetFailureValue, value => state.ResetFailureValue = value);
+        var resetFailureUnitEditor = CreateLabeledOptionComboBox(
+            "重置失败计数单位",
+            state.ResetFailureUnit,
+            ServiceConfigUiOptions.ResetFailureUnitOptions,
+            value => state.ResetFailureUnit = value);
+        restartPanel.Children.Add(restartDelayEditor);
+        restartPanel.Children.Add(resetFailureValueEditor);
+        restartPanel.Children.Add(resetFailureUnitEditor);
+
+        BindConditionalVisibility(
+            state,
+            restartDelayEditor,
+            x => x.FailureAction == FailureActionType.Restart,
+            nameof(ServiceConfigDraft.FailureAction));
+        BindConditionalVisibility(
+            state,
+            resetFailureValueEditor,
+            x => x.FailureAction == FailureActionType.Restart,
+            nameof(ServiceConfigDraft.FailureAction));
+        BindConditionalVisibility(
+            state,
+            resetFailureUnitEditor,
+            x => x.FailureAction == FailureActionType.Restart,
+            nameof(ServiceConfigDraft.FailureAction));
+        tabs.Items.Add(new TabItem { Header = "重启策略", Content = restartPanel });
+
+        var dependencyPanel = new StackPanel { Margin = new Thickness(12, 8, 12, 8) };
+        dependencyPanel.Children.Add(new TextBlock
         {
-            Text = "自动恢复设置",
-            Margin = new Thickness(0, 8, 0, 6),
-            FontWeight = FontWeights.Medium
+            Text = "每行一个服务名，或用逗号/分号分隔。",
+            Opacity = 0.7,
+            TextWrapping = TextWrapping.Wrap
         });
-        container.Children.Add(CreateLabeledCheckBox("启用崩溃自动恢复", state.EnableCrashRecovery, value => state.EnableCrashRecovery = value));
-        container.Children.Add(CreateLabeledIntTextBox("崩溃重启延迟（秒）", state.CrashRestartDelaySeconds, value => state.CrashRestartDelaySeconds = value));
+        dependencyPanel.Children.Add(CreateLabeledMultilineTextBox("依赖服务", state.DependenciesText, value => state.DependenciesText = value));
+        tabs.Items.Add(new TabItem { Header = "依赖", Content = dependencyPanel });
+
+        container.Children.Add(tabs);
 
         var actions = new StackPanel
         {
@@ -545,6 +654,23 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         });
     }
 
+    private static FrameworkElement CreateLabeledMultilineTextBox(string label, string initialValue, System.Action<string> onChanged)
+    {
+        var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
+        panel.Children.Add(new TextBlock { Text = label, Opacity = 0.78 });
+        var box = new TextBox
+        {
+            Text = initialValue,
+            AcceptsReturn = true,
+            MinHeight = 120,
+            TextWrapping = TextWrapping.Wrap,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+        box.TextChanged += (_, _) => onChanged(box.Text ?? string.Empty);
+        panel.Children.Add(box);
+        return panel;
+    }
+
     private static FrameworkElement CreateLabeledCheckBox(string label, bool initialValue, System.Action<bool> onChanged)
     {
         var checkBox = new CheckBox
@@ -558,22 +684,25 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         return checkBox;
     }
 
-    private static FrameworkElement CreateLabeledComboBox(
+    private static FrameworkElement CreateLabeledOptionComboBox<T>(
         string label,
-        ManagedServiceStartMode initialValue,
-        System.Action<ManagedServiceStartMode> onChanged)
+        T initialValue,
+        System.Collections.Generic.IReadOnlyList<DisplayOption<T>> options,
+        System.Action<T> onChanged)
     {
         var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
         panel.Children.Add(new TextBlock { Text = label, Opacity = 0.78 });
 
         var combo = new ComboBox
         {
-            ItemsSource = System.Enum.GetValues(typeof(ManagedServiceStartMode)),
-            SelectedItem = initialValue
+            ItemsSource = options,
+            SelectedValuePath = nameof(DisplayOption<T>.Value),
+            DisplayMemberPath = nameof(DisplayOption<T>.Display),
+            SelectedValue = initialValue
         };
         combo.SelectionChanged += (_, _) =>
         {
-            if (combo.SelectedItem is ManagedServiceStartMode selected)
+            if (combo.SelectedValue is T selected)
             {
                 onChanged(selected);
             }
@@ -581,6 +710,34 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
 
         panel.Children.Add(combo);
         return panel;
+    }
+
+    private static bool IsWinSwRotationMode(LogMode mode)
+    {
+        return mode == LogMode.RollBySize
+               || mode == LogMode.RollByTime
+               || mode == LogMode.RollBySizeTime;
+    }
+
+    private static void BindConditionalVisibility(
+        ServiceConfigDraft state,
+        FrameworkElement element,
+        System.Func<ServiceConfigDraft, bool> condition,
+        params string[] watchedProperties)
+    {
+        void UpdateVisibility()
+        {
+            element.Visibility = condition(state) ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        UpdateVisibility();
+        state.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == null || watchedProperties.Contains(args.PropertyName))
+            {
+                UpdateVisibility();
+            }
+        };
     }
 
     private enum ConfigDialogAction
