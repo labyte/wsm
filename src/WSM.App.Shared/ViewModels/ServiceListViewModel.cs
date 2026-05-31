@@ -477,7 +477,6 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         });
         container.Children.Add(CreateLabeledCheckBox("启用崩溃自动恢复", state.EnableCrashRecovery, value => state.EnableCrashRecovery = value));
         container.Children.Add(CreateLabeledIntTextBox("崩溃重启延迟（秒）", state.CrashRestartDelaySeconds, value => state.CrashRestartDelaySeconds = value));
-        container.Children.Add(CreateLabeledIntTextBox("最大重启次数", state.CrashMaxRestartCount, value => state.CrashMaxRestartCount = value));
 
         var actions = new StackPanel
         {

@@ -180,11 +180,6 @@ public sealed class ServiceConfigValidator
             {
                 result.AddError(nameof(ServiceRecoverySettings.CrashRestartDelaySeconds), "崩溃重启延迟必须大于 0 秒。");
             }
-
-            if (settings.CrashMaxRestartCount <= 0)
-            {
-                result.AddError(nameof(ServiceRecoverySettings.CrashMaxRestartCount), "崩溃最大重启次数必须大于 0。");
-            }
         }
 
         if (settings.EnableHangRecovery && settings.HangDetectionTimeoutSeconds <= 0)

@@ -18,7 +18,7 @@ public sealed class ServiceRecoverySettings
     /// <summary>
     /// 崩溃最大连续重启次数。
     /// </summary>
-    public int CrashMaxRestartCount { get; set; } = 3;
+    public int CrashMaxRestartCount { get; set; } = 1;
 
     /// <summary>
     /// 启用卡死恢复（无响应超时）。

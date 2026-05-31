@@ -51,9 +51,6 @@ public partial class ServiceConfigDraft : ObservableObject
     [ObservableProperty]
     private int _crashRestartDelaySeconds = 5;
 
-    [ObservableProperty]
-    private int _crashMaxRestartCount = 3;
-
     public static ServiceConfigDraft FromManagedService(ManagedService service)
     {
         return new ServiceConfigDraft
@@ -71,8 +68,7 @@ public partial class ServiceConfigDraft : ObservableObject
             StopTimeoutSeconds = service.StopTimeoutSeconds,
             StartAfterInstall = service.StartAfterInstall,
             EnableCrashRecovery = service.RecoverySettings.EnableCrashRecovery,
-            CrashRestartDelaySeconds = GetCrashRestartDelaySeconds(service.FailurePolicy),
-            CrashMaxRestartCount = GetCrashMaxRestartCount(service.FailurePolicy)
+            CrashRestartDelaySeconds = GetCrashRestartDelaySeconds(service.FailurePolicy)
         };
     }
 
@@ -103,12 +99,6 @@ public partial class ServiceConfigDraft : ObservableObject
             return false;
         }
 
-        if (EnableCrashRecovery && CrashMaxRestartCount <= 0)
-        {
-            error = "最大重启次数必须大于 0。";
-            return false;
-        }
-
         return true;
     }
 
@@ -127,13 +117,12 @@ public partial class ServiceConfigDraft : ObservableObject
         service.StartAfterInstall = StartAfterInstall;
         service.FailurePolicy = BuildFailurePolicy(
             EnableCrashRecovery,
-            CrashRestartDelaySeconds,
-            CrashMaxRestartCount);
+            CrashRestartDelaySeconds);
         service.RecoverySettings = new ServiceRecoverySettings
         {
             EnableCrashRecovery = EnableCrashRecovery,
             CrashRestartDelaySeconds = CrashRestartDelaySeconds,
-            CrashMaxRestartCount = CrashMaxRestartCount,
+            CrashMaxRestartCount = 1,
             EnableHangRecovery = false,
             HangDetectionTimeoutSeconds = 120,
             EnablePseudoHangRecovery = false,
@@ -142,28 +131,24 @@ public partial class ServiceConfigDraft : ObservableObject
         };
     }
 
-    public static FailurePolicy BuildFailurePolicy(bool enableCrashRecovery, int delaySeconds, int maxRestartCount)
+    public static FailurePolicy BuildFailurePolicy(bool enableCrashRecovery, int delaySeconds)
     {
         if (!enableCrashRecovery)
         {
             return FailurePolicy.CreateFromTemplate(FailurePolicyTemplate.MonitorOnly);
         }
 
-        var actions = new System.Collections.Generic.List<FailureActionEntry>();
-        for (var i = 0; i < System.Math.Max(1, maxRestartCount); i++)
-        {
-            actions.Add(new FailureActionEntry
-            {
-                Action = FailureActionType.Restart,
-                Delay = $"{System.Math.Max(1, delaySeconds)} sec"
-            });
-        }
-
-        actions.Add(new FailureActionEntry { Action = FailureActionType.None, Delay = "0 sec" });
         return new FailurePolicy
         {
             ResetFailurePeriod = "1 hour",
-            Actions = actions
+            Actions = new System.Collections.Generic.List<FailureActionEntry>
+            {
+                new FailureActionEntry
+                {
+                    Action = FailureActionType.Restart,
+                    Delay = $"{System.Math.Max(1, delaySeconds)} sec"
+                }
+            }
         };
     }
 
@@ -183,11 +168,5 @@ public partial class ServiceConfigDraft : ObservableObject
         }
 
         return int.TryParse(tokens[0], out var seconds) && seconds > 0 ? seconds : 5;
-    }
-
-    private static int GetCrashMaxRestartCount(FailurePolicy failurePolicy)
-    {
-        var restartCount = failurePolicy.Actions.Count(x => x.Action == FailureActionType.Restart);
-        return System.Math.Max(1, restartCount);
     }
 }
