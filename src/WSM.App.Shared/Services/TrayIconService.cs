@@ -1,6 +1,8 @@
 using System;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
@@ -29,6 +31,7 @@ public sealed class TrayIconService : ITrayIconService
     private ToolStripMenuItem? _statusItem;
     private ToolStripMenuItem? _startAllItem;
     private ToolStripMenuItem? _stopAllItem;
+    private Icon? _trayIcon;
 
     public TrayIconService(
         ISnackbarService snackbarService,
@@ -57,7 +60,7 @@ public sealed class TrayIconService : ITrayIconService
 
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = _trayIcon = LoadTrayIcon(),
             Text = WsmConstants.AppDisplayName,
             Visible = true
         };
@@ -146,6 +149,9 @@ public sealed class TrayIconService : ITrayIconService
             _notifyIcon.Dispose();
             _notifyIcon = null;
         }
+
+        _trayIcon?.Dispose();
+        _trayIcon = null;
     }
 
     private ContextMenuStrip BuildContextMenu()
@@ -414,4 +420,35 @@ public sealed class TrayIconService : ITrayIconService
             }
         }).Task;
     }
+
+    private static Icon LoadTrayIcon()
+    {
+        try
+        {
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "wsm-logo-64.png");
+            if (!File.Exists(iconPath))
+            {
+                return (Icon)SystemIcons.Application.Clone();
+            }
+
+            using var bitmap = new Bitmap(iconPath);
+            var iconHandle = bitmap.GetHicon();
+            try
+            {
+                return (Icon)Icon.FromHandle(iconHandle).Clone();
+            }
+            finally
+            {
+                DestroyIcon(iconHandle);
+            }
+        }
+        catch
+        {
+            return (Icon)SystemIcons.Application.Clone();
+        }
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DestroyIcon(IntPtr hIcon);
 }

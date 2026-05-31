@@ -9,6 +9,7 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\WSM.App.Shared\Assets\wsm-logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +21,8 @@
     <None Include="..\..\assets\winsw\WinSW-net461.exe" Link="winsw\WinSW-net461.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\assets\winsw\WinSW-net461.exe')" />
     <None Include="..\..\assets\winsw\WinSW-x64.exe" Link="winsw\WinSW-x64.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\assets\winsw\WinSW-x64.exe')" />
     <None Include="..\..\assets\winsw\WinSW-x86.exe" Link="winsw\WinSW-x86.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\assets\winsw\WinSW-x86.exe')" />
+    <None Include="..\WSM.App.Shared\Assets\wsm-logo.ico" Link="Assets\wsm-logo.ico" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\WSM.App.Shared\Assets\wsm-logo-64.png" Link="Assets\wsm-logo-64.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
