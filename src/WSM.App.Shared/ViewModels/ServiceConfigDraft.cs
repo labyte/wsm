@@ -284,7 +284,7 @@ public partial class ServiceConfigDraft : ObservableObject
     {
         return new LogPolicy
         {
-            // 服务自身日志模式下，WinSW 日志应禁用，避免重复落盘。
+            // 外部日志模式下，WinSW 日志应禁用，避免重复落盘。
             Mode = sourceMode == ServiceLogSourceMode.ExternalFile ? LogMode.Ignore : logMode,
             SizeThresholdKb = Math.Max(1, sizeThresholdKb),
             KeepFiles = Math.Max(1, keepFiles)

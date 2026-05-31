@@ -1,8 +1,13 @@
 using System;
 using System.Drawing;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
+using WSM.App.Shared.ViewModels;
 using WSM.Core;
+using WSM.Core.Interfaces;
+using WSM.Core.Models;
 using Application = System.Windows.Application;
 
 namespace WSM.App.Shared.Services;
@@ -13,14 +18,28 @@ namespace WSM.App.Shared.Services;
 public sealed class TrayIconService : ITrayIconService
 {
     private readonly ISnackbarService _snackbarService;
+    private readonly IServiceRepository _serviceRepository;
+    private readonly IWinSwHostService _winSwHostService;
+    private readonly ServiceListViewModel _serviceListViewModel;
     private NotifyIcon? _notifyIcon;
     private Window? _mainWindow;
     private bool _isExplicitExit;
     private bool _disposed;
+    private bool _isBatchOperating;
+    private ToolStripMenuItem? _statusItem;
+    private ToolStripMenuItem? _startAllItem;
+    private ToolStripMenuItem? _stopAllItem;
 
-    public TrayIconService(ISnackbarService snackbarService)
+    public TrayIconService(
+        ISnackbarService snackbarService,
+        IServiceRepository serviceRepository,
+        IWinSwHostService winSwHostService,
+        ServiceListViewModel serviceListViewModel)
     {
         _snackbarService = snackbarService;
+        _serviceRepository = serviceRepository;
+        _winSwHostService = winSwHostService;
+        _serviceListViewModel = serviceListViewModel;
     }
 
     public bool MinimizeOnClose { get; set; } = true;
@@ -45,6 +64,7 @@ public sealed class TrayIconService : ITrayIconService
 
         _notifyIcon.DoubleClick += OnTrayDoubleClick;
         _notifyIcon.ContextMenuStrip = BuildContextMenu();
+        _ = RefreshBatchMenuStateAsync();
     }
 
     public void ShowMainWindow()
@@ -136,16 +156,23 @@ public sealed class TrayIconService : ITrayIconService
         menu.Items.Add(showItem);
         menu.Items.Add(new ToolStripSeparator());
 
-        var startAllItem = new ToolStripMenuItem("全部启动服务")
+        _statusItem = new ToolStripMenuItem("服务状态：0/0")
         {
             Enabled = false
         };
-        var stopAllItem = new ToolStripMenuItem("全部停止服务")
+        menu.Items.Add(_statusItem);
+
+        _startAllItem = new ToolStripMenuItem("启动全部服务", null, async (_, _) => await StartAllServicesAsync().ConfigureAwait(false))
         {
             Enabled = false
         };
-        menu.Items.Add(startAllItem);
-        menu.Items.Add(stopAllItem);
+        _stopAllItem = new ToolStripMenuItem("停止全部服务", null, async (_, _) => await StopAllServicesAsync().ConfigureAwait(false))
+        {
+            Enabled = false
+        };
+        menu.Opening += async (_, _) => await RefreshBatchMenuStateAsync().ConfigureAwait(false);
+        menu.Items.Add(_startAllItem);
+        menu.Items.Add(_stopAllItem);
         menu.Items.Add(new ToolStripSeparator());
 
         var exitItem = new ToolStripMenuItem("退出", null, (_, _) => RequestExit());
@@ -177,5 +204,214 @@ public sealed class TrayIconService : ITrayIconService
         {
             HideToTray(showBalloon: false);
         }
+    }
+
+    private async Task StartAllServicesAsync()
+    {
+        await ExecuteBatchLifecycleAsync(start: true).ConfigureAwait(false);
+    }
+
+    private async Task StopAllServicesAsync()
+    {
+        await ExecuteBatchLifecycleAsync(start: false).ConfigureAwait(false);
+    }
+
+    private async Task ExecuteBatchLifecycleAsync(bool start)
+    {
+        if (_isBatchOperating)
+        {
+            return;
+        }
+
+        _isBatchOperating = true;
+        await RefreshBatchMenuStateAsync().ConfigureAwait(false);
+
+        try
+        {
+            var services = await _serviceRepository.GetAllAsync().ConfigureAwait(false);
+            if (services.Count == 0)
+            {
+                ShowInfoOnUi("当前没有已托管服务。");
+                return;
+            }
+
+            var success = 0;
+            var skipped = 0;
+            var failed = 0;
+
+            foreach (var service in services.OrderBy(x => x.DisplayName))
+            {
+                var status = await _winSwHostService.GetStatusAsync(service.Id).ConfigureAwait(false);
+                var canOperate = start
+                    ? status != ServiceRuntimeStatus.Running && status != ServiceRuntimeStatus.StartPending
+                    : status == ServiceRuntimeStatus.Running || status == ServiceRuntimeStatus.StartPending;
+
+                if (!canOperate)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var result = start
+                    ? await _winSwHostService.StartAsync(service.Id).ConfigureAwait(false)
+                    : await _winSwHostService.StopAsync(service.Id).ConfigureAwait(false);
+                if (result.Success)
+                {
+                    success++;
+                }
+                else
+                {
+                    failed++;
+                }
+            }
+
+            var actionText = start ? "启动" : "停止";
+            if (failed == 0)
+            {
+                ShowTrayNotification(
+                    $"{WsmConstants.AppDisplayName} - 托盘通知",
+                    $"批量{actionText}完成：成功 {success}，跳过 {skipped}。",
+                    ToolTipIcon.Info);
+            }
+            else
+            {
+                ShowTrayNotification(
+                    $"{WsmConstants.AppDisplayName} - 托盘通知",
+                    $"批量{actionText}完成：成功 {success}，跳过 {skipped}，失败 {failed}。",
+                    ToolTipIcon.Warning);
+            }
+
+            await RefreshServiceListOnUiAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            ShowTrayNotification(
+                $"{WsmConstants.AppDisplayName} - 托盘通知",
+                "托盘批量操作异常：" + ex.Message,
+                ToolTipIcon.Error);
+        }
+        finally
+        {
+            _isBatchOperating = false;
+            await RefreshBatchMenuStateAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task RefreshBatchMenuStateAsync()
+    {
+        if (_statusItem == null || _startAllItem == null || _stopAllItem == null)
+        {
+            return;
+        }
+
+        if (_isBatchOperating)
+        {
+            _statusItem.Text = "服务状态：统计中...";
+            _startAllItem.Enabled = false;
+            _stopAllItem.Enabled = false;
+            return;
+        }
+
+        try
+        {
+            var services = await _serviceRepository.GetAllAsync().ConfigureAwait(false);
+            if (services.Count == 0)
+            {
+                _statusItem.Text = "服务状态：0/0";
+                _startAllItem.Enabled = false;
+                _stopAllItem.Enabled = false;
+                return;
+            }
+
+            var runtimeStatuses = await Task.WhenAll(services.Select(x => _winSwHostService.GetStatusAsync(x.Id))).ConfigureAwait(false);
+            var runningCount = runtimeStatuses.Count(status =>
+                status == ServiceRuntimeStatus.Running || status == ServiceRuntimeStatus.StartPending);
+            var canStartAny = runtimeStatuses.Any(status =>
+                status != ServiceRuntimeStatus.Running && status != ServiceRuntimeStatus.StartPending);
+            var canStopAny = runtimeStatuses.Any(status =>
+                status == ServiceRuntimeStatus.Running || status == ServiceRuntimeStatus.StartPending);
+            _statusItem.Text = $"服务状态：{runningCount}/{services.Count}";
+            _startAllItem.Enabled = canStartAny;
+            _stopAllItem.Enabled = canStopAny;
+        }
+        catch
+        {
+            _statusItem.Text = "服务状态：获取失败";
+            _startAllItem.Enabled = false;
+            _stopAllItem.Enabled = false;
+        }
+    }
+
+    private void ShowInfoOnUi(string message)
+    {
+        Application.Current.Dispatcher.Invoke(() => _snackbarService.ShowInfo(message));
+    }
+
+    private void ShowSuccessOnUi(string message)
+    {
+        Application.Current.Dispatcher.Invoke(() => _snackbarService.ShowSuccess(message));
+    }
+
+    private void ShowWarningOnUi(string message)
+    {
+        Application.Current.Dispatcher.Invoke(() => _snackbarService.ShowWarning(message));
+    }
+
+    private void ShowErrorOnUi(string message)
+    {
+        Application.Current.Dispatcher.Invoke(() => _snackbarService.ShowError(message));
+    }
+
+    private void ShowTrayNotification(string title, string message, ToolTipIcon icon)
+    {
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            if (_notifyIcon == null)
+            {
+                _snackbarService.ShowInfo(message);
+                return;
+            }
+
+            try
+            {
+                _notifyIcon.Visible = true;
+                _notifyIcon.BalloonTipTitle = title;
+                _notifyIcon.BalloonTipText = message;
+                _notifyIcon.BalloonTipIcon = icon;
+                _notifyIcon.ShowBalloonTip(3000);
+            }
+            catch
+            {
+                // 托盘气泡可能被系统策略拦截，兜底给应用内提示。
+                if (icon == ToolTipIcon.Error)
+                {
+                    _snackbarService.ShowError(message);
+                }
+                else if (icon == ToolTipIcon.Warning)
+                {
+                    _snackbarService.ShowWarning(message);
+                }
+                else
+                {
+                    _snackbarService.ShowInfo(message);
+                }
+            }
+        });
+    }
+
+    private Task RefreshServiceListOnUiAsync()
+    {
+        if (_mainWindow == null)
+        {
+            return Task.CompletedTask;
+        }
+
+        return _mainWindow.Dispatcher.InvokeAsync(() =>
+        {
+            if (_serviceListViewModel.RefreshCommand.CanExecute(null))
+            {
+                _serviceListViewModel.RefreshCommand.Execute(null);
+            }
+        }).Task;
     }
 }
