@@ -273,10 +273,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
             return;
         }
 
-        if (!await ConfirmUninstallAsync(item).ConfigureAwait(true))
-        {
-            return;
-        }
+        item.IsConfirmingUninstall = false;
 
         item.IsBusy = true;
         try
@@ -299,61 +296,29 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         }
     }
 
-    private static async Task<bool> ConfirmUninstallAsync(ServiceListItemViewModel item)
+    [RelayCommand]
+    private void OpenUninstallConfirm(ServiceListItemViewModel? item)
     {
-        var contentPanel = new StackPanel
+        if (item == null)
         {
-            MinWidth = 360,
-            Margin = new Thickness(24)
-        };
+            return;
+        }
+        // 先关闭其他项的卸载确认状态，确保一次只有一个项处于确认状态。
+        if (item.IsConfirmingUninstall)
+            item.IsConfirmingUninstall = false;
 
-        contentPanel.Children.Add(new TextBlock
+        item.IsConfirmingUninstall = true;
+    }
+
+    [RelayCommand]
+    private void CancelUninstallConfirm(ServiceListItemViewModel? item)
+    {
+        if (item == null)
         {
-            Text = "确认卸载",
-            FontSize = 18,
-            FontWeight = FontWeights.Medium
-        });
+            return;
+        }
 
-        contentPanel.Children.Add(new TextBlock
-        {
-            Text = $"确认卸载服务“{item.DisplayName}”吗？\n此操作会移除该服务及其相关部署内容。",
-            Margin = new Thickness(0, 12, 0, 0),
-            TextWrapping = TextWrapping.Wrap
-        });
-
-        var actions = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(0, 16, 0, 0)
-        };
-
-        var cancelButton = new Button
-        {
-            Content = "取消",
-            MinWidth = 88,
-            Margin = new Thickness(0, 0, 8, 0),
-            Command = DialogHost.CloseDialogCommand,
-            CommandParameter = false
-        };
-        cancelButton.SetResourceReference(FrameworkElement.StyleProperty, "MaterialDesignFlatButton");
-
-        var confirmButton = new Button
-        {
-            Content = "确认卸载",
-            MinWidth = 88,
-            Command = DialogHost.CloseDialogCommand,
-            CommandParameter = true
-        };
-        confirmButton.SetResourceReference(FrameworkElement.StyleProperty, "MaterialDesignFlatButton");
-        confirmButton.SetResourceReference(Control.ForegroundProperty, "MaterialDesignValidationErrorBrush");
-
-        actions.Children.Add(cancelButton);
-        actions.Children.Add(confirmButton);
-        contentPanel.Children.Add(actions);
-
-        var result = await DialogHost.Show(contentPanel, "RootDialogHost").ConfigureAwait(true);
-        return result is bool confirmed && confirmed;
+        item.IsConfirmingUninstall = false;
     }
 
     private static ServiceConfigDraft BuildConfigDialogState(ManagedService service)

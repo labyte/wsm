@@ -92,7 +92,7 @@
           <Style x:Key="CenteredHeaderStyle" TargetType="DataGridColumnHeader">
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
+          </Style>
         </DataGrid.Resources>
         <DataGrid.CellStyle>
           <Style TargetType="DataGridCell">
@@ -319,19 +319,20 @@
                                      VerticalAlignment="Center" />
                         </StackPanel>
                       </Button>
+
                       <Button Style="{StaticResource MaterialDesignFlatButton}"
-                              HorizontalContentAlignment="Left"
-                              Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                              Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                              CommandParameter="{Binding}">
+                      HorizontalContentAlignment="Left"
+                      Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                      Command="{Binding DataContext.OpenUninstallConfirmCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      CommandParameter="{Binding}">
                         <StackPanel Orientation="Horizontal">
                           <materialDesign:PackIcon Kind="TrashCanOutline"
-                                                   Width="18"
-                                                   Height="18"
-                                                   Margin="0,0,8,0"
-                                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                               Width="18"
+                               Height="18"
+                               Margin="0,0,8,0"
+                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
                           <TextBlock Text="卸载"
-                                     VerticalAlignment="Center" />
+                            VerticalAlignment="Center" />
                         </StackPanel>
                       </Button>
                       <Separator Margin="0,4" />
@@ -363,6 +364,42 @@
                       </Button>
                     </StackPanel>
                   </materialDesign:PopupBox>
+                  <materialDesign:PopupBox PlacementMode="LeftAndAlignBottomEdges"
+                                           PopupHorizontalOffset="-20" PopupVerticalOffset="-10"
+                                           HorizontalAlignment="Right"
+                                           IsPopupOpen="{Binding IsConfirmingUninstall }"
+                                           StaysOpen="True">
+                    <materialDesign:PopupBox.ToggleContent>
+                      <Grid/>
+                    </materialDesign:PopupBox.ToggleContent>
+                    <Border Width="240" Padding="12" CornerRadius="6">
+                      <StackPanel >
+                        <TextBlock Text="确认卸载该服务？"
+                           FontWeight="SemiBold"
+                           TextWrapping="Wrap" />
+                        <TextBlock Margin="0,6,0,0"
+                           Opacity="0.8"
+                           TextWrapping="Wrap"
+                           Text="此操作会移除该服务及其相关部署内容。" />
+                        <StackPanel Margin="0,10,0,0"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right">
+                          <Button Style="{StaticResource MaterialDesignFlatButton}"
+                          Command="{Binding DataContext.CancelUninstallConfirmCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                          CommandParameter="{Binding}"
+                          Content="取消" />
+                          <Button Margin="8,0,0,0"
+                          Style="{StaticResource MaterialDesignFlatButton}"
+                          Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                          Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                          CommandParameter="{Binding}"
+                          Content="确认卸载" />
+                        </StackPanel>
+                      </StackPanel>
+                    </Border>
+
+                  </materialDesign:PopupBox>
+
                 </StackPanel>
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
