@@ -1,0 +1,33 @@
+name: release-installer
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-installer:
+    # 建议使用你自己的 Windows Runner（需预装 .NET 8、.NET Framework 4.8 Dev Pack、Inno Setup 6）
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build installer package
+        shell: pwsh
+        run: |
+          ./scripts/build-installer.ps1 -Configuration Release
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WSM-Installer
+          path: installer/Output/*.exe
+          if-no-files-found: error
