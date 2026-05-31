@@ -60,6 +60,9 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
     [ObservableProperty]
     private bool _isAllSelected;
 
+    [ObservableProperty]
+    private bool _isConfirmingBatchUninstall;
+
     public void OnNavigatedTo()
     {
         _ = RefreshAsync();
@@ -138,6 +141,82 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
             SelectedServices.Where(x => x.IsRunning).ToList(),
             id => _winSwHostService.StopAsync(id),
             "一键停止完成。").ConfigureAwait(true);
+    }
+
+    [RelayCommand]
+    private void OpenBatchUninstallConfirm()
+    {
+        if (SelectedServices.Count == 0)
+        {
+            _snackbarService.ShowInfo("请先选择至少一个服务。");
+            IsConfirmingBatchUninstall = false;
+            return;
+        }
+
+        foreach (var service in Services)
+        {
+            service.IsConfirmingUninstall = false;
+        }
+
+        IsConfirmingBatchUninstall = true;
+    }
+
+    [RelayCommand]
+    private void CancelBatchUninstallConfirm()
+    {
+        IsConfirmingBatchUninstall = false;
+    }
+
+    [RelayCommand]
+    private async Task UninstallSelectedAsync()
+    {
+        if (SelectedServices.Count == 0)
+        {
+            _snackbarService.ShowInfo("请先选择至少一个服务。");
+            IsConfirmingBatchUninstall = false;
+            return;
+        }
+
+        IsConfirmingBatchUninstall = false;
+        var targets = SelectedServices.ToList();
+        var failed = 0;
+        var removed = 0;
+
+        foreach (var item in targets)
+        {
+            item.IsBusy = true;
+            try
+            {
+                var result = await _winSwHostService.UninstallAsync(item.ServiceId).ConfigureAwait(true);
+                if (!result.Success)
+                {
+                    failed++;
+                    _snackbarService.ShowError(result.Message);
+                    continue;
+                }
+
+                item.PropertyChanged -= ServiceItemOnPropertyChanged;
+                Services.Remove(item);
+                SelectedServices.Remove(item);
+                removed++;
+            }
+            finally
+            {
+                item.IsBusy = false;
+                item.IsConfirmingUninstall = false;
+            }
+        }
+
+        UpdateSelectAllState();
+        UpdateEmptyState();
+
+        if (failed == 0)
+        {
+            _snackbarService.ShowSuccess($"一键卸载完成，共卸载 {removed} 项。");
+            return;
+        }
+
+        _snackbarService.ShowWarning($"一键卸载完成，成功 {removed} 项，失败 {failed} 项。");
     }
 
     [RelayCommand]
@@ -282,7 +361,10 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
             if (result.Success)
             {
                 _snackbarService.ShowSuccess(result.Message);
+                item.PropertyChanged -= ServiceItemOnPropertyChanged;
                 Services.Remove(item);
+                SelectedServices.Remove(item);
+                UpdateSelectAllState();
                 UpdateEmptyState();
             }
             else
@@ -303,7 +385,20 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         {
             return;
         }
+
+        IsConfirmingBatchUninstall = false;
+
         // 先关闭其他项的卸载确认状态，确保一次只有一个项处于确认状态。
+        foreach (var service in Services)
+        {
+            if (ReferenceEquals(service, item))
+            {
+                continue;
+            }
+
+            service.IsConfirmingUninstall = false;
+        }
+
         if (item.IsConfirmingUninstall)
             item.IsConfirmingUninstall = false;
 
