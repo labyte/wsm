@@ -21,15 +21,42 @@ if ([string]::IsNullOrWhiteSpace($AppVersion)) {
 
 Write-Host "==> AppVersion: $AppVersion"
 
+function Convert-ToFileVersion([string]$version)
+{
+    $core = $version.Split('-')[0].Split('+')[0]
+    $parts = $core.Split('.')
+    $safe = @()
+    foreach ($part in $parts) {
+        $num = 0
+        [void][int]::TryParse($part, [ref]$num)
+        $safe += $num
+    }
+
+    while ($safe.Count -lt 4) {
+        $safe += 0
+    }
+
+    return ($safe[0..3] -join '.')
+}
+
+$fileVersion = Convert-ToFileVersion $AppVersion
+Write-Host "==> FileVersion: $fileVersion"
+
+$versionProps = @(
+    "/p:Version=$AppVersion",
+    "/p:InformationalVersion=$AppVersion",
+    "/p:FileVersion=$fileVersion"
+)
+
 # 1) 还原与编译
 dotnet restore "WSM.sln"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-dotnet build "WSM.sln" -c $Configuration
+dotnet build "WSM.sln" -c $Configuration @versionProps
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # 2) 发布 Modern 版本（与现有 PublishProfile 对齐）
-dotnet publish "src/WSM.App.Modern/WSM.App.Modern.csproj" -c $Configuration /p:PublishProfile=FolderProfile
+dotnet publish "src/WSM.App.Modern/WSM.App.Modern.csproj" -c $Configuration /p:PublishProfile=FolderProfile @versionProps
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $publishDir = Join-Path $RepoRoot "src/WSM.App.Modern/bin/$Configuration/net8.0-windows/publish/win-x64"

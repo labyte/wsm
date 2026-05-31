@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using WSM.App.Shared.Navigation;
@@ -78,7 +79,7 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
             new(WsmPaths.DefaultRuleProgramName, "程序名称"),
             new(WsmPaths.DefaultRulePrefixProgramName, "前缀 + 程序名称")
         };
-        AppVersion = typeof(Core.Models.ManagedService).Assembly.GetName().Version?.ToString() ?? "0.1.0";
+        AppVersion = ResolveAppVersion();
         DataRootPath = _paths.DataRoot;
         WinSwToolMode = _paths.WinSwToolMode;
         CustomWinSwPath = _paths.CustomWinSwPath;
@@ -94,6 +95,30 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
     }
 
     public string AppVersion { get; }
+
+    private static string ResolveAppVersion()
+    {
+        var entryAssembly = Assembly.GetEntryAssembly();
+        if (entryAssembly != null)
+        {
+            var infoVersion = entryAssembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion;
+            if (!string.IsNullOrWhiteSpace(infoVersion))
+            {
+                return infoVersion!.Trim();
+            }
+
+            var assemblyVersion = entryAssembly.GetName().Version?.ToString();
+            if (!string.IsNullOrWhiteSpace(assemblyVersion))
+            {
+                return assemblyVersion!;
+            }
+        }
+
+        var sharedAssemblyVersion = typeof(SettingsViewModel).Assembly.GetName().Version?.ToString();
+        return string.IsNullOrWhiteSpace(sharedAssemblyVersion) ? "0.1.0" : sharedAssemblyVersion!;
+    }
 
     public IReadOnlyList<WinSwToolOption> WinSwToolModeOptions { get; }
     public IReadOnlyList<DefaultRuleOption> DefaultRuleOptions { get; }
