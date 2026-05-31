@@ -10,10 +10,10 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $ScriptDir
 Set-Location $RepoRoot
 
-# 版本号优先级：参数 > Gitee Tag > 本地时间戳
+# 版本号优先级：参数 > GitHub Tag > 本地时间戳
 if ([string]::IsNullOrWhiteSpace($AppVersion)) {
-    if (-not [string]::IsNullOrWhiteSpace($env:GITEE_TAG_NAME)) {
-        $AppVersion = $env:GITEE_TAG_NAME.TrimStart("v")
+    if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_REF_NAME)) {
+        $AppVersion = $env:GITHUB_REF_NAME.TrimStart("v")
     } else {
         $AppVersion = Get-Date -Format "yyyy.MM.dd.HHmm"
     }

@@ -46,9 +46,9 @@ src/
 
 - [实现步骤文档](docs/IMPLEMENTATION.md)
 
-## 自动构建安装包（Gitee）
+## 自动构建安装包（GitHub）
 
-- 流水线文件：`.gitee/workflows/release-installer.yml`
+- 流水线文件：`.github/workflows/release-installer.yml`
 - 触发方式：推送 `v*` 标签（例如 `v1.0.0`）
 - 本地手动构建安装包：
 

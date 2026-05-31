@@ -5,10 +5,14 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      app_version:
+        description: "Installer version (optional, e.g. 1.2.3)"
+        required: false
+        type: string
 
 jobs:
   build-installer:
-    # 建议使用你自己的 Windows Runner（需预装 .NET 8、.NET Framework 4.8 Dev Pack、Inno Setup 6）
     runs-on: windows-latest
 
     steps:
@@ -20,10 +24,20 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - name: Install Inno Setup 6
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+
       - name: Build installer package
         shell: pwsh
         run: |
-          ./scripts/build-installer.ps1 -Configuration Release
+          $version = "${{ github.event.inputs.app_version }}"
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            ./scripts/build-installer.ps1 -Configuration Release
+          } else {
+            ./scripts/build-installer.ps1 -Configuration Release -AppVersion $version
+          }
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
