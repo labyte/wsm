@@ -30,7 +30,7 @@ WizardStyle=modern
 OutputDir=installer\Output
 OutputBaseFilename=WSM-Setup-v{#AppVersion}
 UninstallDisplayIcon={app}\{#AppExeName}
-SetupIconFile=src\WSM.App.Shared\Assets\wsm-logo.ico
+SetupIconFile=..\src\WSM.App.Shared\Assets\wsm-logo.ico
 
 [Languages]
 Name: "chinesesimp"; MessagesFile: "compiler:Default.isl"
