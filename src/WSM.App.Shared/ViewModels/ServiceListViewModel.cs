@@ -445,7 +445,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
 
         container.Children.Add(new TextBlock
         {
-            Text = $"服务配置 - {state.Id}",
+            Text = $"服务配置 - 服务ID：{state.Id}",
             FontSize = 18,
             FontWeight = FontWeights.Medium
         });

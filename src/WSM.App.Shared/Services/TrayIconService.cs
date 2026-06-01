@@ -29,7 +29,7 @@ public sealed class TrayIconService : ITrayIconService
     private bool _isExplicitExit;
     private bool _disposed;
     private bool _isBatchOperating;
-    private ToolStripMenuItem? _statusItem;
+    private ToolStripMenuItem? _showMainWindowItem;
     private ToolStripMenuItem? _startAllItem;
     private ToolStripMenuItem? _stopAllItem;
     private Icon? _trayIcon;
@@ -66,7 +66,7 @@ public sealed class TrayIconService : ITrayIconService
         _notifyIcon = new NotifyIcon
         {
             Icon = _trayIcon = LoadTrayIcon(),
-            Text = WsmConstants.AppDisplayName,
+            Text = FormatMonitoringTooltip(0, 0),
             Visible = true
         };
 
@@ -163,15 +163,9 @@ public sealed class TrayIconService : ITrayIconService
     {
         var menu = new ContextMenuStrip();
 
-        var showItem = new ToolStripMenuItem("显示主窗口", null, (_, _) => ShowMainWindow());
-        menu.Items.Add(showItem);
+        _showMainWindowItem = new ToolStripMenuItem(FormatOpenMainWindowMenuItem(0, 0), null, (_, _) => ShowMainWindow());
+        menu.Items.Add(_showMainWindowItem);
         menu.Items.Add(new ToolStripSeparator());
-
-        _statusItem = new ToolStripMenuItem("服务状态：0/0")
-        {
-            Enabled = false
-        };
-        menu.Items.Add(_statusItem);
 
         _startAllItem = new ToolStripMenuItem("启动全部服务", null, async (_, _) => await StartAllServicesAsync().ConfigureAwait(false))
         {
@@ -310,16 +304,14 @@ public sealed class TrayIconService : ITrayIconService
 
     private async Task RefreshBatchMenuStateAsync()
     {
-        if (_statusItem == null || _startAllItem == null || _stopAllItem == null)
+        if (_showMainWindowItem == null || _startAllItem == null || _stopAllItem == null)
         {
             return;
         }
 
         if (_isBatchOperating)
         {
-            _statusItem.Text = "服务状态：统计中...";
-            _startAllItem.Enabled = false;
-            _stopAllItem.Enabled = false;
+            UpdateTrayServiceCounts(-1, -1, startAllEnabled: false, stopAllEnabled: false);
             return;
         }
 
@@ -328,9 +320,7 @@ public sealed class TrayIconService : ITrayIconService
             var services = await _serviceRepository.GetAllAsync().ConfigureAwait(false);
             if (services.Count == 0)
             {
-                _statusItem.Text = "服务状态：0/0";
-                _startAllItem.Enabled = false;
-                _stopAllItem.Enabled = false;
+                UpdateTrayServiceCounts(0, 0, startAllEnabled: false, stopAllEnabled: false);
                 return;
             }
 
@@ -341,17 +331,63 @@ public sealed class TrayIconService : ITrayIconService
                 status != ServiceRuntimeStatus.Running && status != ServiceRuntimeStatus.StartPending);
             var canStopAny = runtimeStatuses.Any(status =>
                 status == ServiceRuntimeStatus.Running || status == ServiceRuntimeStatus.StartPending);
-            _statusItem.Text = $"服务状态：{runningCount}/{services.Count}";
-            _startAllItem.Enabled = canStartAny;
-            _stopAllItem.Enabled = canStopAny;
+            UpdateTrayServiceCounts(runningCount, services.Count, canStartAny, canStopAny);
         }
         catch
         {
-            _statusItem.Text = "服务状态：获取失败";
-            _startAllItem.Enabled = false;
-            _stopAllItem.Enabled = false;
+            UpdateTrayServiceCounts(-2, -2, startAllEnabled: false, stopAllEnabled: false);
         }
     }
+
+    private void UpdateTrayServiceCounts(int runningCount, int totalCount, bool? startAllEnabled = null, bool? stopAllEnabled = null)
+    {
+        string tooltipText;
+        string? menuText = null;
+
+        if (runningCount == -1)
+        {
+            tooltipText = "WSM运行监控中（统计中...）";
+        }
+        else if (runningCount == -2)
+        {
+            tooltipText = "WSM运行监控中（获取失败）";
+            menuText = FormatOpenMainWindowMenuItem(0, 0);
+        }
+        else
+        {
+            tooltipText = FormatMonitoringTooltip(runningCount, totalCount);
+            menuText = FormatOpenMainWindowMenuItem(runningCount, totalCount);
+        }
+
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            if (_notifyIcon != null)
+            {
+                _notifyIcon.Text = tooltipText;
+            }
+
+            if (_showMainWindowItem != null && menuText != null)
+            {
+                _showMainWindowItem.Text = menuText;
+            }
+
+            if (startAllEnabled.HasValue && _startAllItem != null)
+            {
+                _startAllItem.Enabled = startAllEnabled.Value;
+            }
+
+            if (stopAllEnabled.HasValue && _stopAllItem != null)
+            {
+                _stopAllItem.Enabled = stopAllEnabled.Value;
+            }
+        });
+    }
+
+    private static string FormatMonitoringTooltip(int runningCount, int totalCount)
+        => $"WSM运行监控中（{runningCount}/{totalCount}）";
+
+    private static string FormatOpenMainWindowMenuItem(int runningCount, int totalCount)
+        => $"打开主窗口（{runningCount}/{totalCount}）";
 
     private void ShowInfoOnUi(string message)
     {
