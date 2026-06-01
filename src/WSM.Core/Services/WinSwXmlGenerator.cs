@@ -98,6 +98,7 @@ public sealed class WinSwXmlGenerator : IWinSwConfigGenerator
                 }
             }
 
+            WriteElement(writer, "logpath", WsmConstants.ServiceWinSwLogPath);
             WriteLogSection(writer, service.LogPolicy);
             WriteFailureSection(writer, service.FailurePolicy);
 

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using WSM.Core;
 using WSM.Core.Models;
 using WSM.Core.Services;
 using Xunit;
@@ -37,6 +38,7 @@ public class WinSwXmlGeneratorTests
         Assert.Contains("<startmode>Automatic</startmode>", xml);
         Assert.Contains("<delayedAutoStart", xml);
         Assert.DoesNotContain("<delayedAutoStart>true</delayedAutoStart>", xml);
+        Assert.Contains($"<logpath>{WsmConstants.ServiceWinSwLogPath}</logpath>", xml);
         Assert.Contains("mode=\"roll-by-size\"", xml);
         Assert.Contains("action=\"restart\"", xml);
         Assert.Contains("delay=\"5 sec\"", xml);

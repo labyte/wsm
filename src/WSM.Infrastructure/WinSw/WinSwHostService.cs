@@ -420,10 +420,10 @@ public sealed class WinSwHostService : IWinSwHostService
         var hasChildProcessExit = output.IndexOf("Child process", StringComparison.OrdinalIgnoreCase) >= 0
                                   && output.IndexOf("finished with code", StringComparison.OrdinalIgnoreCase) >= 0;
 
-        var serviceDirectory = _paths.GetServiceDirectory(serviceId);
-        var wrapperLog = Path.Combine(serviceDirectory, serviceId + ".wrapper.log");
-        var outLog = Path.Combine(serviceDirectory, serviceId + ".out.log");
-        var errLog = Path.Combine(serviceDirectory, serviceId + ".err.log");
+        var logsDirectory = _paths.GetServiceLogsDirectory(serviceId);
+        var wrapperLog = Path.Combine(logsDirectory, serviceId + ".wrapper.log");
+        var outLog = Path.Combine(logsDirectory, serviceId + ".out.log");
+        var errLog = Path.Combine(logsDirectory, serviceId + ".err.log");
 
         if (hasAttachConsoleWarning && hasChildProcessExit)
         {

@@ -197,7 +197,7 @@ public sealed class WsmPaths
     /// </summary>
     public string GetServiceLogsDirectory(string serviceId)
     {
-        return Path.Combine(GetServiceDirectory(serviceId), "logs");
+        return Path.Combine(GetServiceDirectory(serviceId), WsmConstants.ServiceLogsSubdirectoryName);
     }
 
     /// <summary>

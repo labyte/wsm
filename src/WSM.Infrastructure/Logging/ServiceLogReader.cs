@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using WSM.Core;
 using WSM.Core.Models;
 using WSM.Infrastructure.Paths;
 
@@ -263,17 +264,12 @@ public sealed class ServiceLogReader
         var serviceDirectory = _paths.GetServiceDirectory(serviceId);
         var logsDirectory = _paths.GetServiceLogsDirectory(serviceId);
 
-        AddIfExists(results, Path.Combine(serviceDirectory, serviceId + ".out.log"));
-        AddIfExists(results, Path.Combine(serviceDirectory, serviceId + ".err.log"));
+        CollectLogFilesFromDirectory(results, logsDirectory, serviceId);
 
-        if (Directory.Exists(logsDirectory))
+        // 兼容旧部署：日志仍在服务根目录时继续可读
+        if (results.Count == 0)
         {
-            results.AddRange(Directory.GetFiles(logsDirectory, "*.log", SearchOption.TopDirectoryOnly));
-        }
-
-        if (Directory.Exists(serviceDirectory))
-        {
-            results.AddRange(Directory.GetFiles(serviceDirectory, serviceId + ".*.log", SearchOption.TopDirectoryOnly));
+            CollectLogFilesFromDirectory(results, serviceDirectory, serviceId);
         }
 
         var filtered = includeWrapperLogs
@@ -284,6 +280,19 @@ public sealed class ServiceLogReader
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    private static void CollectLogFilesFromDirectory(List<string> results, string directory, string serviceId)
+    {
+        if (!Directory.Exists(directory))
+        {
+            return;
+        }
+
+        AddIfExists(results, Path.Combine(directory, serviceId + ".out.log"));
+        AddIfExists(results, Path.Combine(directory, serviceId + ".err.log"));
+        results.AddRange(Directory.GetFiles(directory, "*.log", SearchOption.TopDirectoryOnly));
+        results.AddRange(Directory.GetFiles(directory, serviceId + ".*.log", SearchOption.TopDirectoryOnly));
     }
 
     public IReadOnlyList<string> DiscoverServiceIdsWithLogs()
@@ -303,7 +312,7 @@ public sealed class ServiceLogReader
             }
 
             var hasRootLogs = Directory.GetFiles(directory, "*.log", SearchOption.TopDirectoryOnly).Length > 0;
-            var logsDirectory = Path.Combine(directory, "logs");
+            var logsDirectory = Path.Combine(directory, WsmConstants.ServiceLogsSubdirectoryName);
             var hasNestedLogs = Directory.Exists(logsDirectory)
                                 && Directory.GetFiles(logsDirectory, "*.log", SearchOption.TopDirectoryOnly).Length > 0;
             if (hasRootLogs || hasNestedLogs)
@@ -576,15 +585,13 @@ public sealed class ServiceLogReader
     private ServiceLogSourceInfo ResolveWinSwLogSource(string serviceId, ManagedService? config)
     {
         var readPaths = DiscoverLogFiles(serviceId);
-        var serviceDirectory = _paths.GetServiceDirectory(serviceId);
         var logsDirectory = _paths.GetServiceLogsDirectory(serviceId);
-        var fallbackDirectory = Directory.Exists(logsDirectory) ? logsDirectory : serviceDirectory;
 
         return new ServiceLogSourceInfo
         {
             SourceMode = ServiceLogSourceMode.WinSw,
             WinSwLogMode = config?.LogPolicy?.Mode,
-            PrimaryPath = BuildPrimaryPathSummary(readPaths, fallbackDirectory),
+            PrimaryPath = BuildPrimaryPathSummary(readPaths, logsDirectory),
             ReadPaths = readPaths
         };
     }
