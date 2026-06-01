@@ -155,7 +155,10 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
                 ? "全部服务"
                 : SelectedService.DisplayName;
             var trackText = IsTracking ? "实时跟踪" : "暂停跟踪";
-            StatusText = $"{scopeText} · {effectiveLines.Count}/{effectiveMaxLines} 行 · {trackText}";
+            var logSourceHint = BuildSingleServiceLogSourceHint(serviceIds, serviceConfigMap);
+            StatusText = string.IsNullOrWhiteSpace(logSourceHint)
+                ? $"{scopeText} · {effectiveLines.Count}/{effectiveMaxLines} 行 · {trackText}"
+                : $"{scopeText} · {logSourceHint} · {effectiveLines.Count}/{effectiveMaxLines} 行 · {trackText}";
         }
         finally
         {
@@ -407,6 +410,21 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
         }
 
         return externalLogFiles;
+    }
+
+    private string BuildSingleServiceLogSourceHint(
+        System.Collections.Generic.IReadOnlyList<string> serviceIds,
+        System.Collections.Generic.IReadOnlyDictionary<string, Core.Models.ManagedService> serviceConfigMap)
+    {
+        if (SelectedService?.ServiceId == null || serviceIds.Count != 1)
+        {
+            return string.Empty;
+        }
+
+        var serviceId = serviceIds[0];
+        serviceConfigMap.TryGetValue(serviceId, out var config);
+        var sourceInfo = _logReader.ResolveServiceLogSource(serviceId, config);
+        return ServiceLogSourceStatusFormatter.FormatSchemeAndPath(sourceInfo);
     }
 
     private static System.Collections.Generic.IEnumerable<string> SplitToNonEmptyLines(string text)

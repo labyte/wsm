@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using WSM.App.Shared.Models;
 using WSM.App.Shared.Services;
 using WSM.Core.Interfaces;
+using WSM.Core.Models;
 using WSM.Infrastructure.Logging;
 using WSM.Infrastructure.Paths;
 
@@ -196,16 +197,24 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
             return;
         }
 
+        ManagedService? config = null;
+        var services = await _serviceRepository.GetAllAsync().ConfigureAwait(true);
+        config = services.FirstOrDefault(x =>
+            string.Equals(x.Id, serviceId, StringComparison.OrdinalIgnoreCase));
+
         var logLines = await Task.Run(() =>
             _logReader.ReadMergedWrapperLogs(new List<string> { serviceId! }, SelectedMaxLines)).ConfigureAwait(true);
         var scopeName = SelectedService?.DisplayName ?? serviceId;
-        ApplyDisplay(logLines, $"{scopeName}(wrapper)", null);
+        var wrapperSource = _logReader.ResolveWrapperLogSource(serviceId!);
+        var logSourceHint = ServiceLogSourceStatusFormatter.FormatSchemeAndPath(wrapperSource, "wrapper");
+        ApplyDisplay(logLines, scopeName, null, logSourceHint);
     }
 
     private void ApplyDisplay(
         IReadOnlyList<ServiceLogLine> logLines,
         string scopeText,
-        string? sourceFilePath)
+        string? sourceFilePath,
+        string? logSourceHint = null)
     {
         var lines = logLines.Select(x => x.DisplayText).ToList();
         DisplayText = lines.Count == 0
@@ -213,6 +222,12 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
             : string.Join(Environment.NewLine, lines) + Environment.NewLine + Environment.NewLine;
 
         var trackText = IsTracking ? "实时跟踪" : "暂停跟踪";
+        if (!string.IsNullOrWhiteSpace(logSourceHint))
+        {
+            StatusText = $"{scopeText} · {logSourceHint} · {lines.Count}/{SelectedMaxLines} 行 · {trackText}";
+            return;
+        }
+
         var fileHint = string.IsNullOrWhiteSpace(sourceFilePath) || !File.Exists(sourceFilePath)
             ? string.Empty
             : $" · {sourceFilePath}";

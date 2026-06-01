@@ -1,7 +1,9 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Windows;
+using WSM.App.Shared.Cli;
 using WSM.App.Shared.Hosting;
 
 namespace WSM.App.Legacy;
@@ -15,6 +17,15 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        var cliArgs = e.Args?.Length > 0
+            ? e.Args
+            : Environment.GetCommandLineArgs().Skip(1).ToArray();
+        if (UninstallCliHandler.TryHandle(cliArgs, out var cliExitCode))
+        {
+            Environment.Exit(cliExitCode);
+            return;
+        }
+
         // 单例保护：同一时间仅允许一个 WSM 实例运行
         _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out var createdNew);
         _ownsSingleInstanceMutex = createdNew;

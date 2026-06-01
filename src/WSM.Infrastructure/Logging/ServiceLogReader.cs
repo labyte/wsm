@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using WSM.Core.Models;
 using WSM.Infrastructure.Paths;
 
 namespace WSM.Infrastructure.Logging;
@@ -52,6 +53,26 @@ public sealed class LogClearResult
 {
     public int ClearedCount { get; set; }
     public List<LogClearFailure> Failures { get; } = new List<LogClearFailure>();
+}
+
+/// <summary>
+/// 单服务日志方案与路径摘要（供控制台/日志页状态栏展示）。
+/// </summary>
+public sealed class ServiceLogSourceInfo
+{
+    public ServiceLogSourceMode SourceMode { get; set; } = ServiceLogSourceMode.WinSw;
+
+    public LogMode? WinSwLogMode { get; set; }
+
+    /// <summary>
+    /// 用于状态栏展示的主路径（文件或目录）。
+    /// </summary>
+    public string PrimaryPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 当前实际参与读取的日志文件路径。
+    /// </summary>
+    public IReadOnlyList<string> ReadPaths { get; set; } = Array.Empty<string>();
 }
 
 /// <summary>
@@ -183,9 +204,47 @@ public sealed class ServiceLogReader
         return ordered.Skip(ordered.Count - maxLines).ToList();
     }
 
+    /// <summary>
+    /// 解析单服务的日志方案与路径（与 <see cref="ReadMergedLogs"/> 读取规则一致）。
+    /// </summary>
+    public ServiceLogSourceInfo ResolveServiceLogSource(string serviceId, ManagedService? config)
+    {
+        if (string.IsNullOrWhiteSpace(serviceId))
+        {
+            return new ServiceLogSourceInfo();
+        }
+
+        if (config != null && config.LogSourceMode == ServiceLogSourceMode.ExternalFile)
+        {
+            return ResolveExternalLogSource(config);
+        }
+
+        return ResolveWinSwLogSource(serviceId, config);
+    }
+
     public IReadOnlyList<string> DiscoverLogFiles(string serviceId)
     {
         return DiscoverLogFilesInternal(serviceId, includeWrapperLogs: false);
+    }
+
+    /// <summary>
+    /// 解析单服务 wrapper 日志路径（与 <see cref="ReadMergedWrapperLogs"/> 一致）。
+    /// </summary>
+    public ServiceLogSourceInfo ResolveWrapperLogSource(string serviceId)
+    {
+        if (string.IsNullOrWhiteSpace(serviceId))
+        {
+            return new ServiceLogSourceInfo();
+        }
+
+        var readPaths = DiscoverWrapperLogFiles(serviceId);
+        var serviceDirectory = _paths.GetServiceDirectory(serviceId);
+        return new ServiceLogSourceInfo
+        {
+            SourceMode = ServiceLogSourceMode.WinSw,
+            PrimaryPath = BuildPrimaryPathSummary(readPaths, serviceDirectory),
+            ReadPaths = readPaths
+        };
     }
 
     /// <summary>
@@ -481,6 +540,68 @@ public sealed class ServiceLogReader
     {
         var fileName = Path.GetFileName(filePath);
         return fileName.IndexOf(".wrapper.", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private ServiceLogSourceInfo ResolveExternalLogSource(ManagedService config)
+    {
+        var latestFile = ResolveLatestExternalLogFile(
+            config.ExternalLogDirectoryPath,
+            config.ExternalLogFileExtensions);
+
+        if (string.IsNullOrWhiteSpace(latestFile)
+            && !string.IsNullOrWhiteSpace(config.ExternalLogFilePath))
+        {
+            latestFile = config.ExternalLogFilePath.Trim();
+        }
+
+        var configuredDirectory = (config.ExternalLogDirectoryPath ?? string.Empty).Trim();
+        var primaryPath = !string.IsNullOrWhiteSpace(latestFile)
+            ? latestFile
+            : configuredDirectory;
+
+        IReadOnlyList<string> readPaths = Array.Empty<string>();
+        if (!string.IsNullOrWhiteSpace(latestFile))
+        {
+            readPaths = new List<string> { latestFile };
+        }
+
+        return new ServiceLogSourceInfo
+        {
+            SourceMode = ServiceLogSourceMode.ExternalFile,
+            PrimaryPath = primaryPath ?? string.Empty,
+            ReadPaths = readPaths
+        };
+    }
+
+    private ServiceLogSourceInfo ResolveWinSwLogSource(string serviceId, ManagedService? config)
+    {
+        var readPaths = DiscoverLogFiles(serviceId);
+        var serviceDirectory = _paths.GetServiceDirectory(serviceId);
+        var logsDirectory = _paths.GetServiceLogsDirectory(serviceId);
+        var fallbackDirectory = Directory.Exists(logsDirectory) ? logsDirectory : serviceDirectory;
+
+        return new ServiceLogSourceInfo
+        {
+            SourceMode = ServiceLogSourceMode.WinSw,
+            WinSwLogMode = config?.LogPolicy?.Mode,
+            PrimaryPath = BuildPrimaryPathSummary(readPaths, fallbackDirectory),
+            ReadPaths = readPaths
+        };
+    }
+
+    private static string BuildPrimaryPathSummary(IReadOnlyList<string> readPaths, string fallbackDirectory)
+    {
+        if (readPaths.Count == 1)
+        {
+            return readPaths[0];
+        }
+
+        if (readPaths.Count > 1)
+        {
+            return $"{fallbackDirectory}（读取 {readPaths.Count} 个文件）";
+        }
+
+        return fallbackDirectory;
     }
 
     private static List<string> ParseExtensions(string? extensionFilterText)
