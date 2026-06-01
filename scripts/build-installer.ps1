@@ -65,6 +65,19 @@ if (-not (Test-Path $publishDir)) {
     throw "Publish output folder not found: $publishDir"
 }
 
+$requiredWinSwFiles = @(
+    (Join-Path $publishDir "winsw/WinSW-x64.exe"),
+    (Join-Path $publishDir "winsw/WinSW-x86.exe"),
+    (Join-Path $publishDir "winsw/WinSW-net461.exe")
+)
+
+$missingWinSwFiles = $requiredWinSwFiles | Where-Object { -not (Test-Path $_) }
+if ($missingWinSwFiles.Count -gt 0) {
+    throw ("Missing bundled WinSW files in publish output:`n" + ($missingWinSwFiles -join "`n"))
+}
+
+Write-Host "==> WinSW files check passed."
+
 # 3) Locate and run Inno Setup.
 $isccCandidates = @(
     "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
