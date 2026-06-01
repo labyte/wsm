@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -49,7 +50,6 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
                 _ = RefreshAsync();
             }
         };
-        StatusText = "正在加载历史日志…";
     }
 
     public ObservableCollection<ServiceConsoleOption> ServiceOptions { get; }
@@ -59,7 +59,10 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
     private string _displayText = string.Empty;
 
     [ObservableProperty]
-    private string _statusText = string.Empty;
+    private string _logSchemeText = "—";
+
+    [ObservableProperty]
+    private string _logPathText = string.Empty;
 
     [ObservableProperty]
     private ServiceConsoleOption? _selectedService = ServiceConsoleOption.Combined;
@@ -91,6 +94,22 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
     }
 
     [RelayCommand]
+    private async Task OpenLogDirectoryAsync()
+    {
+        var directory = ResolveLogDirectory();
+        if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+        {
+            _snackbarService.ShowWarning("日志目录不存在，请确认日志路径配置正确。");
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo(directory)
+        {
+            UseShellExecute = true
+        });
+    }
+
+    [RelayCommand]
     private async Task ClearAsync()
     {
         if (IsCombinedView)
@@ -99,9 +118,15 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
             var clearResult = await Task.Run(() =>
                 _logReader.ClearLogFilesDetailed(new[] { operationLogPath })).ConfigureAwait(true);
             DisplayText = string.Empty;
-            StatusText = clearResult.ClearedCount > 0
-                ? "综合操作日志已清空（operations.log）"
-                : "未清理到 operations.log，请确认文件路径与权限。";
+
+            if (clearResult.ClearedCount > 0)
+            {
+                _snackbarService.ShowSuccess("综合操作日志已清空（operations.log）");
+            }
+            else
+            {
+                _snackbarService.ShowInfo("未清理到 operations.log，请确认文件路径与权限。");
+            }
 
             if (clearResult.Failures.Count > 0)
             {
@@ -111,6 +136,7 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
                 _snackbarService.ShowWarning("operations.log 清空失败：" + Environment.NewLine + preview);
             }
 
+            await RefreshAsync().ConfigureAwait(true);
             return;
         }
 
@@ -123,9 +149,15 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
         var wrapperClearResult = await Task.Run(() =>
             _logReader.ClearWrapperLogsDetailed(serviceIds)).ConfigureAwait(true);
         DisplayText = string.Empty;
-        StatusText = wrapperClearResult.ClearedCount > 0
-            ? $"{SelectedService.DisplayName} wrapper 日志已清空（{wrapperClearResult.ClearedCount} 个文件）"
-            : "未清理到可写 wrapper 日志文件，请确认文件占用与权限。";
+
+        if (wrapperClearResult.ClearedCount > 0)
+        {
+            _snackbarService.ShowSuccess($"{SelectedService.DisplayName} wrapper 日志已清空（{wrapperClearResult.ClearedCount} 个文件）");
+        }
+        else
+        {
+            _snackbarService.ShowInfo("未清理到可写 wrapper 日志文件，请确认文件占用与权限。");
+        }
 
         if (wrapperClearResult.Failures.Count > 0)
         {
@@ -137,21 +169,14 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
                 : string.Empty;
             _snackbarService.ShowWarning("以下 wrapper 日志文件清空失败：" + Environment.NewLine + preview + moreHint);
         }
+
+        await RefreshAsync().ConfigureAwait(true);
     }
 
     [RelayCommand]
     private void CopyAll()
     {
         _consoleLogHelper.CopyToClipboard(DisplayText);
-    }
-
-    [RelayCommand]
-    private void Export()
-    {
-        var suffix = IsCombinedView
-            ? "combined-operations"
-            : $"wrapper-{SelectedService?.ServiceId ?? "service"}";
-        _consoleLogHelper.ExportToFile(DisplayText, $"wsm-{suffix}-{DateTime.Now:yyyyMMdd-HHmmss}.log");
     }
 
     [RelayCommand]
@@ -184,7 +209,9 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
         var operationLogPath = _paths.OperationLogPath;
         var logLines = await Task.Run(() =>
             _logReader.ReadOperationLog(operationLogPath, SelectedMaxLines)).ConfigureAwait(true);
-        ApplyDisplay(logLines, "综合(operations.log)", operationLogPath);
+        ApplyLogLines(logLines);
+        LogSchemeText = "综合操作日志";
+        LogPathText = string.IsNullOrWhiteSpace(operationLogPath) ? "—" : operationLogPath;
     }
 
     private async Task RefreshServiceWrapperAsync()
@@ -193,45 +220,59 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
         if (string.IsNullOrWhiteSpace(serviceId))
         {
             DisplayText = string.Empty;
-            StatusText = "请选择服务";
+            LogSchemeText = "—";
+            LogPathText = "—";
             return;
         }
 
-        ManagedService? config = null;
-        var services = await _serviceRepository.GetAllAsync().ConfigureAwait(true);
-        config = services.FirstOrDefault(x =>
-            string.Equals(x.Id, serviceId, StringComparison.OrdinalIgnoreCase));
-
         var logLines = await Task.Run(() =>
             _logReader.ReadMergedWrapperLogs(new List<string> { serviceId! }, SelectedMaxLines)).ConfigureAwait(true);
-        var scopeName = SelectedService?.DisplayName ?? serviceId;
+        ApplyLogLines(logLines);
+
         var wrapperSource = _logReader.ResolveWrapperLogSource(serviceId!);
-        var logSourceHint = ServiceLogSourceStatusFormatter.FormatSchemeAndPath(wrapperSource, "wrapper");
-        ApplyDisplay(logLines, scopeName, null, logSourceHint);
+        LogSchemeText = $"{ServiceLogSourceStatusFormatter.FormatScheme(wrapperSource)} · wrapper";
+        LogPathText = ServiceLogSourceStatusFormatter.FormatPath(wrapperSource);
     }
 
-    private void ApplyDisplay(
-        IReadOnlyList<ServiceLogLine> logLines,
-        string scopeText,
-        string? sourceFilePath,
-        string? logSourceHint = null)
+    private void ApplyLogLines(IReadOnlyList<ServiceLogLine> logLines)
     {
         var lines = logLines.Select(x => x.DisplayText).ToList();
         DisplayText = lines.Count == 0
             ? string.Empty
             : string.Join(Environment.NewLine, lines) + Environment.NewLine + Environment.NewLine;
+    }
 
-        var trackText = IsTracking ? "实时跟踪" : "暂停跟踪";
-        if (!string.IsNullOrWhiteSpace(logSourceHint))
+    private string? ResolveLogDirectory()
+    {
+        if (IsCombinedView)
         {
-            StatusText = $"{scopeText} · {logSourceHint} · {lines.Count}/{SelectedMaxLines} 行 · {trackText}";
-            return;
+            var operationLogPath = _paths.OperationLogPath;
+            if (!string.IsNullOrWhiteSpace(operationLogPath))
+            {
+                var operationLogDirectory = Path.GetDirectoryName(operationLogPath);
+                if (!string.IsNullOrWhiteSpace(operationLogDirectory) && Directory.Exists(operationLogDirectory))
+                {
+                    return operationLogDirectory;
+                }
+            }
+
+            return Directory.Exists(_paths.AppLogsDirectory) ? _paths.AppLogsDirectory : null;
         }
 
-        var fileHint = string.IsNullOrWhiteSpace(sourceFilePath) || !File.Exists(sourceFilePath)
-            ? string.Empty
-            : $" · {sourceFilePath}";
-        StatusText = $"{scopeText} · {lines.Count}/{SelectedMaxLines} 行 · {trackText}{fileHint}";
+        var serviceId = SelectedService?.ServiceId;
+        if (string.IsNullOrWhiteSpace(serviceId))
+        {
+            return null;
+        }
+
+        var logsDirectory = _paths.GetServiceLogsDirectory(serviceId!);
+        if (Directory.Exists(logsDirectory))
+        {
+            return logsDirectory;
+        }
+
+        var serviceDirectory = _paths.GetServiceDirectory(serviceId);
+        return Directory.Exists(serviceDirectory) ? serviceDirectory : null;
     }
 
     partial void OnSelectedMaxLinesChanged(int value)

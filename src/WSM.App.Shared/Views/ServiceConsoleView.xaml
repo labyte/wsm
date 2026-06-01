@@ -55,17 +55,10 @@
                      Background="Transparent">
           <ToolBar>
             <Button Command="{Binding OpenLogDirectoryCommand}"
-                    ToolTip="在资源管理器中打开日志文件目录">
+                    ToolTip="在资源管理器中打开日志目录">
               <StackPanel Orientation="Horizontal">
-                <materialDesign:PackIcon Kind="FolderOpen" Width="16" Height="16" />
-                <TextBlock Margin="6,0,0,0" Text="打开目录" />
-              </StackPanel>
-            </Button>
-            <Button Command="{Binding ExportCommand}"
-                    ToolTip="导出日志">
-              <StackPanel Orientation="Horizontal">
-                <materialDesign:PackIcon Kind="Export" Width="16" Height="16" />
-                <TextBlock Margin="6,0,0,0" Text="导出" />
+                <materialDesign:PackIcon Kind="FolderOutline" Width="16" Height="16" />
+                <TextBlock Margin="6,0,0,0" Text="日志目录" />
               </StackPanel>
             </Button>
             <Button Command="{Binding CopyAllCommand}"
@@ -93,11 +86,35 @@
         </ToolBarTray>
       </StackPanel>
 
-      <TextBlock Text="{Binding StatusText}"
-                 Margin="0,6,0,0"
-                 Opacity="0.65"
-                 TextWrapping="Wrap"
-                 Style="{StaticResource MaterialDesignBody2TextBlock}" />
+      <Grid Margin="0,6,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0"
+                    Orientation="Horizontal"
+                    Margin="0,0,24,0">
+          <TextBlock Text="方案"
+                     Opacity="0.55"
+                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
+          <TextBlock Margin="8,0,0,0"
+                     Text="{Binding LogSchemeText}"
+                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="1"
+                    Orientation="Horizontal">
+          <TextBlock Text="路径"
+                     Opacity="0.55"
+                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
+          <TextBlock Margin="8,0,0,0"
+                     Text="{Binding LogPathText}"
+                     TextTrimming="CharacterEllipsis"
+                     ToolTip="{Binding LogPathText}"
+                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
+        </StackPanel>
+      </Grid>
     </StackPanel>
 
     <controls:ConsoleLogView Grid.Row="1"

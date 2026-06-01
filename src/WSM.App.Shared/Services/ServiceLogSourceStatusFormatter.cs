@@ -15,36 +15,38 @@ public static class ServiceLogSourceStatusFormatter
         var scheme = FormatScheme(info);
         if (!string.IsNullOrWhiteSpace(viewHint))
         {
-            scheme = $"{scheme}·{viewHint}";
+            scheme = $"{scheme} · {viewHint}";
         }
 
-        var path = string.IsNullOrWhiteSpace(info.PrimaryPath)
-            ? "（路径不可用）"
-            : info.PrimaryPath;
-        return $"{scheme} · {path}";
+        return $"{scheme} · {FormatPath(info)}";
     }
 
-    private static string FormatScheme(ServiceLogSourceInfo info)
+    /// <summary>
+    /// 简短日志方案描述（供状态栏展示）。
+    /// </summary>
+    public static string FormatScheme(ServiceLogSourceInfo info)
     {
         if (info.SourceMode == ServiceLogSourceMode.ExternalFile)
         {
-            return GetLogSourceDisplay(ServiceLogSourceMode.ExternalFile);
+            return "外部日志";
         }
 
-        var winSwScheme = GetLogSourceDisplay(ServiceLogSourceMode.WinSw);
         if (info.WinSwLogMode == null)
         {
-            return winSwScheme;
+            return "WinSW";
         }
 
         var modeDisplay = ServiceConfigUiOptions.WinSwLogModeOptions
             .FirstOrDefault(x => x.Value == info.WinSwLogMode.Value)
             ?.Display ?? info.WinSwLogMode.Value.ToString();
-        return $"{winSwScheme}·{modeDisplay}";
+        return $"WinSW · {modeDisplay}";
     }
 
-    private static string GetLogSourceDisplay(ServiceLogSourceMode mode) =>
-        ServiceConfigUiOptions.LogSourceOptions
-            .FirstOrDefault(x => x.Value == mode)
-            ?.Display ?? mode.ToString();
+    /// <summary>
+    /// 日志路径摘要（供状态栏展示）。
+    /// </summary>
+    public static string FormatPath(ServiceLogSourceInfo info)
+    {
+        return string.IsNullOrWhiteSpace(info.PrimaryPath) ? "—" : info.PrimaryPath;
+    }
 }

@@ -63,7 +63,10 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
     private bool _isLoading;
 
     [ObservableProperty]
-    private string _statusText = "选择服务以查看日志";
+    private string _logSchemeText = "—";
+
+    [ObservableProperty]
+    private string _logPathText = string.Empty;
 
     [ObservableProperty]
     private string _displayText = string.Empty;
@@ -85,7 +88,6 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
 
     partial void OnIsTrackingChanged(bool value)
     {
-        // 勾选状态变化后立即刷新状态栏文案，确保“实时跟踪/暂停跟踪”同步显示。
         _ = RefreshAsync();
     }
 
@@ -133,7 +135,8 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
             if (serviceIds.Count == 0)
             {
                 DisplayText = string.Empty;
-                StatusText = "暂无已安装服务";
+                LogSchemeText = "暂无服务";
+                LogPathText = "—";
                 return;
             }
 
@@ -151,14 +154,7 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
                 ? string.Empty
                 : joinedText + Environment.NewLine + Environment.NewLine;
 
-            var scopeText = SelectedService?.ServiceId == null
-                ? "全部服务"
-                : SelectedService.DisplayName;
-            var trackText = IsTracking ? "实时跟踪" : "暂停跟踪";
-            var logSourceHint = BuildSingleServiceLogSourceHint(serviceIds, serviceConfigMap);
-            StatusText = string.IsNullOrWhiteSpace(logSourceHint)
-                ? $"{scopeText} · {effectiveLines.Count}/{effectiveMaxLines} 行 · {trackText}"
-                : $"{scopeText} · {logSourceHint} · {effectiveLines.Count}/{effectiveMaxLines} 行 · {trackText}";
+            UpdateLogStatusBar(serviceIds, serviceConfigMap);
         }
         finally
         {
@@ -170,13 +166,6 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
     private void CopyAll()
     {
         _consoleLogHelper.CopyToClipboard(DisplayText);
-    }
-
-    [RelayCommand]
-    private void Export()
-    {
-        var serviceName = SelectedService?.ServiceId ?? "all-services";
-        _consoleLogHelper.ExportToFile(DisplayText, $"service-{serviceName}-{DateTime.Now:yyyyMMdd-HHmmss}.log");
     }
 
     [RelayCommand]
@@ -219,9 +208,16 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
             .ToList();
 
         DisplayText = string.Empty;
-        StatusText = clearedCount > 0
-            ? $"日志已清空（共清理 {clearedCount} 个文件）"
-            : "未清理到可写日志文件，请确认服务日志目录与权限。";
+        if (clearedCount > 0)
+        {
+            _snackbarService.ShowSuccess($"日志已清空（共清理 {clearedCount} 个文件）");
+        }
+        else
+        {
+            _snackbarService.ShowInfo("未清理到可写日志文件，请确认服务日志目录与权限。");
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
 
         if (failures.Count > 0)
         {
@@ -412,19 +408,31 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
         return externalLogFiles;
     }
 
-    private string BuildSingleServiceLogSourceHint(
+    private void UpdateLogStatusBar(
         System.Collections.Generic.IReadOnlyList<string> serviceIds,
         System.Collections.Generic.IReadOnlyDictionary<string, Core.Models.ManagedService> serviceConfigMap)
     {
-        if (SelectedService?.ServiceId == null || serviceIds.Count != 1)
+        if (SelectedService?.ServiceId == null)
         {
-            return string.Empty;
+            LogSchemeText = "全部服务";
+            LogPathText = Directory.Exists(_paths.ServicesDirectory)
+                ? _paths.ServicesDirectory
+                : "—";
+            return;
+        }
+
+        if (serviceIds.Count != 1)
+        {
+            LogSchemeText = "—";
+            LogPathText = "—";
+            return;
         }
 
         var serviceId = serviceIds[0];
         serviceConfigMap.TryGetValue(serviceId, out var config);
         var sourceInfo = _logReader.ResolveServiceLogSource(serviceId, config);
-        return ServiceLogSourceStatusFormatter.FormatSchemeAndPath(sourceInfo);
+        LogSchemeText = ServiceLogSourceStatusFormatter.FormatScheme(sourceInfo);
+        LogPathText = ServiceLogSourceStatusFormatter.FormatPath(sourceInfo);
     }
 
     private static System.Collections.Generic.IEnumerable<string> SplitToNonEmptyLines(string text)
