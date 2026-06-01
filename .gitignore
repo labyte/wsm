@@ -30,6 +30,3 @@ TestResults/
 
 ## Local
 *.local.json
-
-## WinSW 二进制（通过 assets/winsw/README.md 下载）
-assets/winsw/*.exe
