@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Threading;
@@ -10,11 +11,12 @@ using WSM.App.Shared.Models;
 using WSM.App.Shared.Services;
 using WSM.Core.Interfaces;
 using WSM.Infrastructure.Logging;
+using WSM.Infrastructure.Paths;
 
 namespace WSM.App.Shared.ViewModels;
 
 /// <summary>
-/// WSM 操作日志 ViewModel。
+/// WSM 操作日志 ViewModel（综合视图读 operations.log，单服务读 wrapper.log）。
 /// </summary>
 public partial class LogViewerViewModel : ObservableObject, INavigationAware
 {
@@ -22,19 +24,22 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
     private readonly ServiceLogReader _logReader;
     private readonly ConsoleLogHelper _consoleLogHelper;
     private readonly ISnackbarService _snackbarService;
+    private readonly WsmPaths _paths;
     private readonly DispatcherTimer _refreshTimer;
 
     public LogViewerViewModel(
         IServiceRepository serviceRepository,
         ServiceLogReader logReader,
         ConsoleLogHelper consoleLogHelper,
-        ISnackbarService snackbarService)
+        ISnackbarService snackbarService,
+        WsmPaths paths)
     {
         _serviceRepository = serviceRepository;
         _logReader = logReader;
         _consoleLogHelper = consoleLogHelper;
         _snackbarService = snackbarService;
-        ServiceOptions = new ObservableCollection<ServiceConsoleOption> { ServiceConsoleOption.All };
+        _paths = paths;
+        ServiceOptions = new ObservableCollection<ServiceConsoleOption> { ServiceConsoleOption.Combined };
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _refreshTimer.Tick += (_, _) =>
         {
@@ -56,7 +61,7 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
     private string _statusText = string.Empty;
 
     [ObservableProperty]
-    private ServiceConsoleOption? _selectedService = ServiceConsoleOption.All;
+    private ServiceConsoleOption? _selectedService = ServiceConsoleOption.Combined;
 
     [ObservableProperty]
     private bool _isTracking = true;
@@ -69,6 +74,8 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
 
     [ObservableProperty]
     private bool _isLoading;
+
+    private bool IsCombinedView => SelectedService?.ServiceId == null;
 
     partial void OnSelectedServiceChanged(ServiceConsoleOption? value)
     {
@@ -85,31 +92,50 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
     [RelayCommand]
     private async Task ClearAsync()
     {
-        var serviceIds = ResolveTargetServiceIds();
-        var clearResult = new LogClearResult();
-        if (serviceIds.Count > 0)
+        if (IsCombinedView)
         {
-            clearResult = await Task.Run(() => _logReader.ClearWrapperLogsDetailed(serviceIds)).ConfigureAwait(true);
+            var operationLogPath = _paths.OperationLogPath;
+            var clearResult = await Task.Run(() =>
+                _logReader.ClearLogFilesDetailed(new[] { operationLogPath })).ConfigureAwait(true);
             DisplayText = string.Empty;
             StatusText = clearResult.ClearedCount > 0
-                ? $"WSM 操作日志已清空（已处理 {clearResult.ClearedCount} 个 wrapper 文件）"
-                : "未清理到可写 wrapper 日志文件，请确认文件占用与权限。";
+                ? "综合操作日志已清空（operations.log）"
+                : "未清理到 operations.log，请确认文件路径与权限。";
 
             if (clearResult.Failures.Count > 0)
             {
                 var preview = string.Join(Environment.NewLine, clearResult.Failures
                     .Take(5)
                     .Select(x => $"{x.FilePath}（{x.Reason}）"));
-                var moreHint = clearResult.Failures.Count > 5
-                    ? $"{Environment.NewLine}... 其余 {clearResult.Failures.Count - 5} 个文件未展示"
-                    : string.Empty;
-                _snackbarService.ShowWarning("以下 wrapper 日志文件清空失败：" + Environment.NewLine + preview + moreHint);
+                _snackbarService.ShowWarning("operations.log 清空失败：" + Environment.NewLine + preview);
             }
+
             return;
         }
 
+        if (SelectedService?.ServiceId == null)
+        {
+            return;
+        }
+
+        var serviceIds = new List<string> { SelectedService.ServiceId };
+        var wrapperClearResult = await Task.Run(() =>
+            _logReader.ClearWrapperLogsDetailed(serviceIds)).ConfigureAwait(true);
         DisplayText = string.Empty;
-        StatusText = "暂无可清空的 WSM 操作日志";
+        StatusText = wrapperClearResult.ClearedCount > 0
+            ? $"{SelectedService.DisplayName} wrapper 日志已清空（{wrapperClearResult.ClearedCount} 个文件）"
+            : "未清理到可写 wrapper 日志文件，请确认文件占用与权限。";
+
+        if (wrapperClearResult.Failures.Count > 0)
+        {
+            var preview = string.Join(Environment.NewLine, wrapperClearResult.Failures
+                .Take(5)
+                .Select(x => $"{x.FilePath}（{x.Reason}）"));
+            var moreHint = wrapperClearResult.Failures.Count > 5
+                ? $"{Environment.NewLine}... 其余 {wrapperClearResult.Failures.Count - 5} 个文件未展示"
+                : string.Empty;
+            _snackbarService.ShowWarning("以下 wrapper 日志文件清空失败：" + Environment.NewLine + preview + moreHint);
+        }
     }
 
     [RelayCommand]
@@ -121,7 +147,10 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
     [RelayCommand]
     private void Export()
     {
-        _consoleLogHelper.ExportToFile(DisplayText, $"wsm-operations-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+        var suffix = IsCombinedView
+            ? "combined-operations"
+            : $"wrapper-{SelectedService?.ServiceId ?? "service"}";
+        _consoleLogHelper.ExportToFile(DisplayText, $"wsm-{suffix}-{DateTime.Now:yyyyMMdd-HHmmss}.log");
     }
 
     [RelayCommand]
@@ -135,30 +164,59 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
         IsLoading = true;
         try
         {
-            var serviceIds = await Task.Run(ResolveTargetServiceIds).ConfigureAwait(true);
-            if (serviceIds.Count == 0)
+            if (IsCombinedView)
             {
-                DisplayText = string.Empty;
-                StatusText = "暂无 WSM 操作日志";
+                await RefreshCombinedAsync().ConfigureAwait(true);
                 return;
             }
 
-            var logLines = await Task.Run(() => _logReader.ReadMergedWrapperLogs(serviceIds, SelectedMaxLines)).ConfigureAwait(true);
-            var lines = logLines.Select(x => x.DisplayText).ToList();
-
-            DisplayText = lines.Count == 0
-                ? string.Empty
-                : string.Join(Environment.NewLine, lines) + Environment.NewLine + Environment.NewLine;
-            var trackText = IsTracking ? "实时跟踪" : "暂停跟踪";
-            var scopeText = SelectedService?.ServiceId == null
-                ? "全部服务(wrapper)"
-                : $"{SelectedService.DisplayName}(wrapper)";
-            StatusText = $"{scopeText} · {lines.Count}/{SelectedMaxLines} 行 · {trackText}";
+            await RefreshServiceWrapperAsync().ConfigureAwait(true);
         }
         finally
         {
             IsLoading = false;
         }
+    }
+
+    private async Task RefreshCombinedAsync()
+    {
+        var operationLogPath = _paths.OperationLogPath;
+        var logLines = await Task.Run(() =>
+            _logReader.ReadOperationLog(operationLogPath, SelectedMaxLines)).ConfigureAwait(true);
+        ApplyDisplay(logLines, "综合(operations.log)", operationLogPath);
+    }
+
+    private async Task RefreshServiceWrapperAsync()
+    {
+        var serviceId = SelectedService?.ServiceId;
+        if (string.IsNullOrWhiteSpace(serviceId))
+        {
+            DisplayText = string.Empty;
+            StatusText = "请选择服务";
+            return;
+        }
+
+        var logLines = await Task.Run(() =>
+            _logReader.ReadMergedWrapperLogs(new List<string> { serviceId! }, SelectedMaxLines)).ConfigureAwait(true);
+        var scopeName = SelectedService?.DisplayName ?? serviceId;
+        ApplyDisplay(logLines, $"{scopeName}(wrapper)", null);
+    }
+
+    private void ApplyDisplay(
+        IReadOnlyList<ServiceLogLine> logLines,
+        string scopeText,
+        string? sourceFilePath)
+    {
+        var lines = logLines.Select(x => x.DisplayText).ToList();
+        DisplayText = lines.Count == 0
+            ? string.Empty
+            : string.Join(Environment.NewLine, lines) + Environment.NewLine + Environment.NewLine;
+
+        var trackText = IsTracking ? "实时跟踪" : "暂停跟踪";
+        var fileHint = string.IsNullOrWhiteSpace(sourceFilePath) || !File.Exists(sourceFilePath)
+            ? string.Empty
+            : $" · {sourceFilePath}";
+        StatusText = $"{scopeText} · {lines.Count}/{SelectedMaxLines} 行 · {trackText}{fileHint}";
     }
 
     partial void OnSelectedMaxLinesChanged(int value)
@@ -174,7 +232,6 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
 
     partial void OnIsTrackingChanged(bool value)
     {
-        // 实时跟踪勾选变化后立即刷新，确保标题状态文本同步。
         _ = RefreshAsync();
     }
 
@@ -184,7 +241,7 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
         var currentId = SelectedService?.ServiceId;
 
         ServiceOptions.Clear();
-        ServiceOptions.Add(ServiceConsoleOption.All);
+        ServiceOptions.Add(ServiceConsoleOption.Combined);
 
         foreach (var service in services.OrderBy(x => x.DisplayName))
         {
@@ -192,27 +249,6 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
         }
 
         SelectedService = ServiceOptions.FirstOrDefault(x => x.ServiceId == currentId)
-            ?? ServiceConsoleOption.All;
-    }
-
-    private List<string> ResolveTargetServiceIds()
-    {
-        if (SelectedService?.ServiceId != null)
-        {
-            return new List<string> { SelectedService.ServiceId };
-        }
-
-        var serviceIds = ServiceOptions
-            .Where(x => x.ServiceId != null)
-            .Select(x => x.ServiceId!)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (serviceIds.Count > 0)
-        {
-            return serviceIds;
-        }
-
-        return new List<string>();
+            ?? ServiceConsoleOption.Combined;
     }
 }

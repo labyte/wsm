@@ -40,16 +40,27 @@
                   IsChecked="{Binding IsWrapEnabled, Mode=TwoWay}"
                   Content="自动换行" />
 
+        <TextBlock Text="最大条数"
+                   Margin="0,0,6,0"
+                   VerticalAlignment="Center"
+                   Style="{StaticResource MaterialDesignBody2TextBlock}" />
+
         <ComboBox Margin="0,0,12,0"
                   MinWidth="120"
                   VerticalAlignment="Center"
-                  materialDesign:HintAssist.Hint="最大条数"
                   ItemsSource="{Binding MaxLineOptions}"
                   SelectedItem="{Binding SelectedMaxLines, Mode=TwoWay}" />
 
         <ToolBarTray IsLocked="True"
                      Background="Transparent">
           <ToolBar>
+            <Button Command="{Binding OpenLogDirectoryCommand}"
+                    ToolTip="在资源管理器中打开日志文件目录">
+              <StackPanel Orientation="Horizontal">
+                <materialDesign:PackIcon Kind="FolderOpen" Width="16" Height="16" />
+                <TextBlock Margin="6,0,0,0" Text="打开目录" />
+              </StackPanel>
+            </Button>
             <Button Command="{Binding ExportCommand}"
                     ToolTip="导出日志">
               <StackPanel Orientation="Horizontal">

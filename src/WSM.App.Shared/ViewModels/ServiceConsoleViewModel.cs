@@ -1,5 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Threading;
@@ -8,7 +10,9 @@ using CommunityToolkit.Mvvm.Input;
 using WSM.App.Shared.Models;
 using WSM.App.Shared.Services;
 using WSM.Core.Interfaces;
+using WSM.Core.Models;
 using WSM.Infrastructure.Logging;
+using WSM.Infrastructure.Paths;
 
 namespace WSM.App.Shared.ViewModels;
 
@@ -21,6 +25,7 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
     private readonly ServiceLogReader _logReader;
     private readonly ConsoleLogHelper _consoleLogHelper;
     private readonly ISnackbarService _snackbarService;
+    private readonly WsmPaths _paths;
     private readonly DispatcherTimer _refreshTimer;
     private string? _pendingServiceId;
 
@@ -28,12 +33,14 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
         IServiceRepository serviceRepository,
         ServiceLogReader logReader,
         ConsoleLogHelper consoleLogHelper,
-        ISnackbarService snackbarService)
+        ISnackbarService snackbarService,
+        WsmPaths paths)
     {
         _serviceRepository = serviceRepository;
         _logReader = logReader;
         _consoleLogHelper = consoleLogHelper;
         _snackbarService = snackbarService;
+        _paths = paths;
         ServiceOptions = new ObservableCollection<ServiceConsoleOption> { ServiceConsoleOption.All };
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
@@ -72,6 +79,7 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
 
     partial void OnSelectedServiceChanged(ServiceConsoleOption? value)
     {
+        _ = ApplySelectedServiceLogSettingsAsync();
         _ = RefreshAsync();
     }
 
@@ -106,6 +114,7 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
     {
         _pendingServiceId = string.IsNullOrWhiteSpace(serviceId) ? null : serviceId;
         TryApplyPendingServiceSelection();
+        _ = ApplySelectedServiceLogSettingsAsync();
         _ = RefreshAsync();
     }
 
@@ -132,28 +141,6 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
             var serviceConfigMap = serviceConfigs.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase);
             var externalLogFiles = BuildExternalLogFileMap(serviceIds, serviceConfigMap);
             var effectiveMaxLines = SelectedMaxLines;
-
-            foreach (var serviceId in serviceIds)
-            {
-                if (!serviceConfigMap.TryGetValue(serviceId, out var config))
-                {
-                    continue;
-                }
-
-                if (config.LogSourceMode != WSM.Core.Models.ServiceLogSourceMode.ExternalFile)
-                {
-                    continue;
-                }
-
-                if (serviceIds.Count == 1 && config.ExternalLogTailLines > 0)
-                {
-                    effectiveMaxLines = config.ExternalLogTailLines;
-                    if (IsTracking != config.ExternalLogRealtimeTracking)
-                    {
-                        IsTracking = config.ExternalLogRealtimeTracking;
-                    }
-                }
-            }
 
             var logLines = _logReader.ReadMergedLogs(serviceIds, externalLogFiles, effectiveMaxLines);
             var effectiveLines = logLines
@@ -187,6 +174,22 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
     {
         var serviceName = SelectedService?.ServiceId ?? "all-services";
         _consoleLogHelper.ExportToFile(DisplayText, $"service-{serviceName}-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+    }
+
+    [RelayCommand]
+    private async Task OpenLogDirectoryAsync()
+    {
+        var directory = await ResolveLogDirectoryAsync().ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+        {
+            _snackbarService.ShowWarning("日志目录不存在，请确认服务已安装且日志路径配置正确。");
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo(directory)
+        {
+            UseShellExecute = true
+        });
     }
 
     [RelayCommand]
@@ -244,7 +247,93 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
             ?? ServiceConsoleOption.All;
 
         _pendingServiceId = null;
+        await ApplySelectedServiceLogSettingsAsync().ConfigureAwait(true);
         await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// 切换服务时应用外部日志默认偏好；刷新周期内不再覆盖用户勾选状态。
+    /// </summary>
+    private async Task ApplySelectedServiceLogSettingsAsync()
+    {
+        if (SelectedService?.ServiceId == null)
+        {
+            return;
+        }
+
+        var services = await _serviceRepository.GetAllAsync().ConfigureAwait(true);
+        var config = services.FirstOrDefault(x =>
+            string.Equals(x.Id, SelectedService.ServiceId, StringComparison.OrdinalIgnoreCase));
+        if (config == null || config.LogSourceMode != ServiceLogSourceMode.ExternalFile)
+        {
+            return;
+        }
+
+        if (config.ExternalLogTailLines > 0)
+        {
+            SelectedMaxLines = config.ExternalLogTailLines;
+        }
+
+        IsTracking = config.ExternalLogRealtimeTracking;
+    }
+
+    private async Task<string?> ResolveLogDirectoryAsync()
+    {
+        if (SelectedService?.ServiceId != null)
+        {
+            var services = await _serviceRepository.GetAllAsync().ConfigureAwait(true);
+            var config = services.FirstOrDefault(x =>
+                string.Equals(x.Id, SelectedService.ServiceId, StringComparison.OrdinalIgnoreCase));
+            if (config != null)
+            {
+                if (config.LogSourceMode == ServiceLogSourceMode.ExternalFile)
+                {
+                    var configuredDirectory = (config.ExternalLogDirectoryPath ?? string.Empty).Trim();
+                    if (!string.IsNullOrWhiteSpace(configuredDirectory) && Directory.Exists(configuredDirectory))
+                    {
+                        return configuredDirectory;
+                    }
+
+                    var latestExternalLog = _logReader.ResolveLatestExternalLogFile(
+                        config.ExternalLogDirectoryPath,
+                        config.ExternalLogFileExtensions);
+                    if (!string.IsNullOrWhiteSpace(latestExternalLog))
+                    {
+                        var latestDirectory = Path.GetDirectoryName(latestExternalLog);
+                        if (!string.IsNullOrWhiteSpace(latestDirectory) && Directory.Exists(latestDirectory))
+                        {
+                            return latestDirectory;
+                        }
+                    }
+
+                    var legacyFile = (config.ExternalLogFilePath ?? string.Empty).Trim();
+                    if (!string.IsNullOrWhiteSpace(legacyFile))
+                    {
+                        var legacyDirectory = Path.GetDirectoryName(legacyFile);
+                        if (!string.IsNullOrWhiteSpace(legacyDirectory) && Directory.Exists(legacyDirectory))
+                        {
+                            return legacyDirectory;
+                        }
+                    }
+                }
+
+                var logsDirectory = _paths.GetServiceLogsDirectory(SelectedService.ServiceId);
+                if (Directory.Exists(logsDirectory))
+                {
+                    return logsDirectory;
+                }
+
+                var serviceDirectory = _paths.GetServiceDirectory(SelectedService.ServiceId);
+                if (Directory.Exists(serviceDirectory))
+                {
+                    return serviceDirectory;
+                }
+            }
+
+            return null;
+        }
+
+        return Directory.Exists(_paths.ServicesDirectory) ? _paths.ServicesDirectory : null;
     }
 
     private void TryApplyPendingServiceSelection()

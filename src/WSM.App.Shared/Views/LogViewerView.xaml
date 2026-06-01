@@ -25,7 +25,7 @@
         <ComboBox Margin="0,0,12,0"
                   MinWidth="220"
                   VerticalAlignment="Center"
-                  materialDesign:HintAssist.Hint="选择服务"
+                  materialDesign:HintAssist.Hint="综合或服务"
                   ItemsSource="{Binding ServiceOptions}"
                   SelectedItem="{Binding SelectedService, Mode=TwoWay}"
                   DisplayMemberPath="DisplayName" />
@@ -40,10 +40,14 @@
                   IsChecked="{Binding IsWrapEnabled, Mode=TwoWay}"
                   Content="自动换行" />
 
+        <TextBlock Text="最大条数"
+                   Margin="0,0,6,0"
+                   VerticalAlignment="Center"
+                   Style="{StaticResource MaterialDesignBody2TextBlock}" />
+
         <ComboBox Margin="0,0,12,0"
                   MinWidth="120"
                   VerticalAlignment="Center"
-                  materialDesign:HintAssist.Hint="最大条数"
                   ItemsSource="{Binding MaxLineOptions}"
                   SelectedItem="{Binding SelectedMaxLines, Mode=TwoWay}" />
 
@@ -53,28 +57,28 @@
             <Button Command="{Binding ExportCommand}"
                     ToolTip="导出日志">
               <StackPanel Orientation="Horizontal">
-                <materialDesign:PackIcon Kind="Export" Width="16" Height="16" />
+                <materialDesign:PackIcon Kind="Export" Width="20" Height="20" />
                 <TextBlock Margin="6,0,0,0" Text="导出" />
               </StackPanel>
             </Button>
             <Button Command="{Binding CopyAllCommand}"
                     ToolTip="复制全部日志">
               <StackPanel Orientation="Horizontal">
-                <materialDesign:PackIcon Kind="ContentCopy" Width="16" Height="16" />
+                <materialDesign:PackIcon Kind="ContentCopy" Width="20" Height="20" />
                 <TextBlock Margin="6,0,0,0" Text="复制" />
               </StackPanel>
             </Button>
             <Button Command="{Binding RefreshCommand}"
                     ToolTip="刷新日志">
               <StackPanel Orientation="Horizontal">
-                <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16" />
+                <materialDesign:PackIcon Kind="Refresh" Width="20" Height="20" />
                 <TextBlock Margin="6,0,0,0" Text="刷新" />
               </StackPanel>
             </Button>
             <Button Command="{Binding ClearCommand}"
                     ToolTip="清空日志">
               <StackPanel Orientation="Horizontal">
-                <materialDesign:PackIcon Kind="DeleteOutline" Width="16" Height="16" />
+                <materialDesign:PackIcon Kind="DeleteOutline" Width="20" Height="20" />
                 <TextBlock Margin="6,0,0,0" Text="清空" />
               </StackPanel>
             </Button>

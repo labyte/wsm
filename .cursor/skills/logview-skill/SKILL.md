@@ -13,13 +13,14 @@ description: 描述控制台页面的UI需求和功能实现
 ## 技术约束
 - 使用 `MaterialDesignThemes.Wpf` 的现有组件与样式键。
 - 注意此功能不同于控制台日志，此功能时WSM本身操作的日志
-- 日志文件来源于 *.wrapper.log
-- 清空日志仅清空 *.wrapper.log
+- 综合视图读取 operations.log（WsmPaths.OperationLogPath）
+- 单服务视图读取该服务目录下 *.wrapper.log
+- 清空：综合清空 operations.log；单服务清空对应 wrapper.log
 
 ## 实施规则
 1. 布局，从左到右依次
    - 服务列表标题(WSM操作日志)。   
-   - 服务选择下拉框，包含全部
+   - 服务选择下拉框，首项为「综合」，其余为各已安装服务
    - checkbox 启用实时跟踪。
    - checkbox 自动换行。
    - 下来框选择显示的最大日志条数。
@@ -32,7 +33,8 @@ description: 描述控制台页面的UI需求和功能实现
 
 3. 控制台显示的日志对应功能按钮的功能
    - 进入时加载历史日志 
-   - 选择全部服务时，根据时间排序
+   - 综合：读取 operations.log 最近 N 行
+   - 单服务：读取该服务 wrapper.log 最近 N 行
    - 支持实时跟踪切换。
    - 支持自动换行切换。
    - 根据设置的最大条数实时删除旧日志。

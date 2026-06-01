@@ -23,6 +23,7 @@ public sealed class TrayIconService : ITrayIconService
     private readonly IServiceRepository _serviceRepository;
     private readonly IWinSwHostService _winSwHostService;
     private readonly ServiceListViewModel _serviceListViewModel;
+    private readonly ICloseWindowPreferenceStore _closeWindowPreferenceStore;
     private NotifyIcon? _notifyIcon;
     private Window? _mainWindow;
     private bool _isExplicitExit;
@@ -37,15 +38,18 @@ public sealed class TrayIconService : ITrayIconService
         ISnackbarService snackbarService,
         IServiceRepository serviceRepository,
         IWinSwHostService winSwHostService,
-        ServiceListViewModel serviceListViewModel)
+        ServiceListViewModel serviceListViewModel,
+        ICloseWindowPreferenceStore closeWindowPreferenceStore)
     {
         _snackbarService = snackbarService;
         _serviceRepository = serviceRepository;
         _winSwHostService = winSwHostService;
         _serviceListViewModel = serviceListViewModel;
+        _closeWindowPreferenceStore = closeWindowPreferenceStore;
+        MinimizeOnClose = closeWindowPreferenceStore.LoadMinimizeOnClose() ?? true;
     }
 
-    public bool MinimizeOnClose { get; set; } = true;
+    public bool MinimizeOnClose { get; set; }
 
     public void Attach(Window mainWindow)
     {
@@ -54,6 +58,7 @@ public sealed class TrayIconService : ITrayIconService
             throw new InvalidOperationException("托盘已初始化。");
         }
 
+        MinimizeOnClose = _closeWindowPreferenceStore.LoadMinimizeOnClose() ?? MinimizeOnClose;
         _mainWindow = mainWindow;
         _mainWindow.Closing += OnMainWindowClosing;
         _mainWindow.StateChanged += OnMainWindowStateChanged;

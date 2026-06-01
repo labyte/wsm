@@ -140,7 +140,21 @@ public sealed class ServiceLogReader
     }
 
     /// <summary>
-    /// 读取所有服务的 wrapper 历史日志（保持文件内原始顺序）。
+    /// 读取 WSM 操作日志文件（operations.log，保持文件内原始顺序）。
+    /// </summary>
+    public IReadOnlyList<ServiceLogLine> ReadOperationLog(string operationLogPath, int maxLines = 3000)
+    {
+        if (string.IsNullOrWhiteSpace(operationLogPath))
+        {
+            return Array.Empty<ServiceLogLine>();
+        }
+
+        var lines = ReadLogFile(string.Empty, operationLogPath, "operations").ToList();
+        return TakeLastSafe(lines, maxLines);
+    }
+
+    /// <summary>
+    /// 读取指定服务的 wrapper 历史日志（保持文件内原始顺序）。
     /// </summary>
     public IReadOnlyList<ServiceLogLine> ReadMergedWrapperLogs(
         IReadOnlyList<string> serviceIds,

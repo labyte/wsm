@@ -61,6 +61,29 @@
 
     <materialDesign:Card Padding="16" Margin="0,0,0,12">
       <StackPanel>
+        <TextBlock Text="窗口行为"
+                   Style="{StaticResource MaterialDesignSubtitle2TextBlock}" />
+        <TextBlock Margin="0,8,0,0"
+                   Opacity="0.78"
+                   Text="关闭主窗口时" />
+        <StackPanel Margin="0,6,0,0">
+          <RadioButton GroupName="CloseWindowBehavior"
+                       Content="最小化到系统托盘"
+                       IsChecked="{Binding MinimizeOnClose, Mode=TwoWay}" />
+          <RadioButton GroupName="CloseWindowBehavior"
+                       Margin="0,6,0,0"
+                       Content="退出程序"
+                       IsChecked="{Binding ExitOnClose, Mode=TwoWay}" />
+        </StackPanel>
+        <TextBlock Margin="0,10,0,0"
+                   Opacity="0.65"
+                   TextWrapping="Wrap"
+                   Text="选择「退出程序」后，点击窗口关闭按钮将直接结束 WSM；最小化窗口仍会进入托盘。" />
+      </StackPanel>
+    </materialDesign:Card>
+
+    <materialDesign:Card Padding="16" Margin="0,0,0,12">
+      <StackPanel>
         <TextBlock Text="数据目录" Style="{StaticResource MaterialDesignSubtitle2TextBlock}" />
         <TextBox Margin="0,8,0,0"
                  Text="{Binding DataRootPath, UpdateSourceTrigger=PropertyChanged}"

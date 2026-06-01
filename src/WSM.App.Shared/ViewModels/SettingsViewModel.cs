@@ -51,6 +51,9 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
     private readonly IServiceRepository _serviceRepository;
     private readonly IWinSwHostService _winSwHostService;
     private readonly INavigationService _navigationService;
+    private readonly ITrayIconService _trayIconService;
+    private readonly ICloseWindowPreferenceStore _closeWindowPreferenceStore;
+    private bool _isLoadingCloseWindowBehavior;
 
     public SettingsViewModel(
         WsmPaths paths,
@@ -58,7 +61,9 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         ISnackbarService snackbarService,
         IServiceRepository serviceRepository,
         IWinSwHostService winSwHostService,
-        INavigationService navigationService)
+        INavigationService navigationService,
+        ITrayIconService trayIconService,
+        ICloseWindowPreferenceStore closeWindowPreferenceStore)
     {
         _paths = paths;
         _adminElevation = adminElevation;
@@ -66,6 +71,8 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         _serviceRepository = serviceRepository;
         _winSwHostService = winSwHostService;
         _navigationService = navigationService;
+        _trayIconService = trayIconService;
+        _closeWindowPreferenceStore = closeWindowPreferenceStore;
         WinSwToolModeOptions = new List<WinSwToolOption>
         {
             new(WsmPaths.WinSwToolModeBundledX64, "内置 WinSW x64（推荐）"),
@@ -92,6 +99,7 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         ServiceDescriptionRulePrefix = _paths.ServiceDescriptionRulePrefix;
         UpdateWinSwToolDerivedState();
         RefreshAdminStatus();
+        LoadCloseWindowBehavior();
     }
 
     public string AppVersion { get; }
@@ -124,7 +132,10 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
     public IReadOnlyList<DefaultRuleOption> DefaultRuleOptions { get; }
 
     [ObservableProperty]
-    private string _hint = "关闭主窗口时将最小化到系统托盘。";
+    private string _hint = string.Empty;
+
+    [ObservableProperty]
+    private bool _minimizeOnClose = true;
 
     [ObservableProperty]
     private string _adminStatusText = string.Empty;
@@ -187,8 +198,18 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
     public bool IsServiceNamePrefixVisible => string.Equals(ServiceNameRuleMode, WsmPaths.DefaultRulePrefixProgramName, StringComparison.OrdinalIgnoreCase);
     public bool IsServiceDescriptionPrefixVisible => string.Equals(ServiceDescriptionRuleMode, WsmPaths.DefaultRulePrefixProgramName, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// 与 <see cref="MinimizeOnClose"/> 互斥，用于“退出程序”单选按钮绑定。
+    /// </summary>
+    public bool ExitOnClose
+    {
+        get => !MinimizeOnClose;
+        set => MinimizeOnClose = !value;
+    }
+
     public void OnNavigatedTo()
     {
+        LoadCloseWindowBehavior();
         DataRootPath = _paths.DataRoot;
         WinSwToolMode = _paths.WinSwToolMode;
         CustomWinSwPath = _paths.CustomWinSwPath;
@@ -220,6 +241,39 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         IsRunningAsAdministrator = _adminElevation.IsRunningAsAdministrator;
         CanRestartElevated = _adminElevation.CanRestartElevated;
         AdminStatusText = _adminElevation.GetAdminStatusText();
+    }
+
+    private void LoadCloseWindowBehavior()
+    {
+        _isLoadingCloseWindowBehavior = true;
+        try
+        {
+            MinimizeOnClose = _closeWindowPreferenceStore.LoadMinimizeOnClose()
+                ?? _trayIconService.MinimizeOnClose;
+            _trayIconService.MinimizeOnClose = MinimizeOnClose;
+            UpdateCloseWindowHint();
+        }
+        finally
+        {
+            _isLoadingCloseWindowBehavior = false;
+        }
+    }
+
+    private void ApplyCloseWindowBehavior(bool minimizeOnClose)
+    {
+        _trayIconService.MinimizeOnClose = minimizeOnClose;
+        _closeWindowPreferenceStore.SaveMinimizeOnClose(minimizeOnClose);
+        UpdateCloseWindowHint();
+        _snackbarService.ShowInfo(minimizeOnClose
+            ? "已设置：关闭主窗口时最小化到托盘。"
+            : "已设置：关闭主窗口时退出程序。");
+    }
+
+    private void UpdateCloseWindowHint()
+    {
+        Hint = MinimizeOnClose
+            ? "关闭主窗口时将最小化到系统托盘，程序继续在后台运行。"
+            : "关闭主窗口时将退出程序。仍可通过托盘菜单中的「退出」结束运行。";
     }
 
     [RelayCommand]
@@ -536,6 +590,17 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         return Directory.Exists(fallbackDirectory)
             ? fallbackDirectory
             : Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+    }
+
+    partial void OnMinimizeOnCloseChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ExitOnClose));
+        if (_isLoadingCloseWindowBehavior)
+        {
+            return;
+        }
+
+        ApplyCloseWindowBehavior(value);
     }
 
     partial void OnWinSwToolModeChanged(string value)
