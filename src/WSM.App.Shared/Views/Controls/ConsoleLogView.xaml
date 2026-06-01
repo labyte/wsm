@@ -195,7 +195,6 @@
              CaretBrush="#D4D4D4"
              FontFamily="Cascadia Mono, Consolas, Courier New, monospace"
              FontSize="13"
-             TextWrapping="Wrap"
              VerticalScrollBarVisibility="Auto"
              HorizontalScrollBarVisibility="Disabled">
       <TextBox.Resources>
@@ -205,10 +204,12 @@
       <TextBox.Style>
         <Style TargetType="{x:Type TextBox}">
           <Setter Property="TextWrapping" Value="NoWrap" />
+          <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
           <Style.Triggers>
             <DataTrigger Binding="{Binding WrapLines, RelativeSource={RelativeSource AncestorType=UserControl}}"
                          Value="True">
               <Setter Property="TextWrapping" Value="Wrap" />
+              <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
             </DataTrigger>
           </Style.Triggers>
         </Style>
