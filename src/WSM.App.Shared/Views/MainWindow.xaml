@@ -22,7 +22,7 @@
         TextElement.FontSize="14"
         FontFamily="Roboto"
         Background="{DynamicResource MaterialDesignPaper}"
-        Icon="/WSM.App.Shared;component/Assets/wsm-logo-256.png">
+        Icon="/WSM.App.Shared;component/Assets/wsm-logo.ico">
 
   <Window.Resources>
     <Style x:Key="SidebarRailNavigationListBoxStyle" TargetType="ListBox">

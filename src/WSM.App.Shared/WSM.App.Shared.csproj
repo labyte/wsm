@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Assets\wsm-logo.ico" />
     <Resource Include="Assets\wsm-logo-256.png" />
   </ItemGroup>
 

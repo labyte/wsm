@@ -43,9 +43,9 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\WSM"; Filename: "{app}\{#AppExeName}"
+Name: "{group}\WSM"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\Assets\wsm-logo.ico"
 Name: "{group}\卸载 WSM"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\WSM"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\WSM"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\Assets\wsm-logo.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "启动 WSM"; Flags: nowait postinstall skipifsilent
