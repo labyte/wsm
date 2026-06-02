@@ -491,16 +491,17 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         var logSizeEditor = CreateLabeledIntTextBox("大小阈值（KB）", state.LogSizeThresholdKb, value => state.LogSizeThresholdKb = value);
         var logKeepFilesEditor = CreateLabeledIntTextBox("保留文件数", state.LogKeepFiles, value => state.LogKeepFiles = value);
         var externalLogDirectoryEditor = CreateLabeledTextBox("日志目录", state.ExternalLogDirectoryPath, value => state.ExternalLogDirectoryPath = value);
-        var externalLogExtensionsEditor = CreateLabeledTextBox("扩展名匹配", state.ExternalLogFileExtensions, value => state.ExternalLogFileExtensions = value);
-        var externalLogTrackEditor = CreateLabeledCheckBox("启用", state.ExternalLogRealtimeTracking, value => state.ExternalLogRealtimeTracking = value);
-        var externalLogTailEditor = CreateLabeledIntTextBox("Tail 行数", state.ExternalLogTailLines, value => state.ExternalLogTailLines = value);
+        var externalLogExtensionsEditor = CreateLabeledTextBox(
+            "扩展名匹配",
+            state.ExternalLogFileExtensions,
+            value => state.ExternalLogFileExtensions = value,
+            ServiceConfigUiOptions.ExternalLogFileExtensionsFormatDescription,
+            ServiceConfigUiOptions.ExternalLogFileExtensionsPlaceholder);
         logPanel.Children.Add(logModeEditor);
         logPanel.Children.Add(logSizeEditor);
         logPanel.Children.Add(logKeepFilesEditor);
         logPanel.Children.Add(externalLogDirectoryEditor);
         logPanel.Children.Add(externalLogExtensionsEditor);
-        logPanel.Children.Add(externalLogTrackEditor);
-        logPanel.Children.Add(externalLogTailEditor);
 
         BindConditionalVisibility(
             state,
@@ -527,16 +528,6 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         BindConditionalVisibility(
             state,
             externalLogExtensionsEditor,
-            x => x.LogSourceMode == ServiceLogSourceMode.ExternalFile,
-            nameof(ServiceConfigDraft.LogSourceMode));
-        BindConditionalVisibility(
-            state,
-            externalLogTrackEditor,
-            x => x.LogSourceMode == ServiceLogSourceMode.ExternalFile,
-            nameof(ServiceConfigDraft.LogSourceMode));
-        BindConditionalVisibility(
-            state,
-            externalLogTailEditor,
             x => x.LogSourceMode == ServiceLogSourceMode.ExternalFile,
             nameof(ServiceConfigDraft.LogSourceMode));
         tabs.Items.Add(new TabItem { Header = "日志", Content = CreateTabScrollContent(logPanel) });
@@ -573,16 +564,17 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
             resetFailureUnitEditor,
             x => x.FailureAction == FailureActionType.Restart,
             nameof(ServiceConfigDraft.FailureAction));
-        tabs.Items.Add(new TabItem { Header = "重启策略", Content = CreateTabScrollContent(restartPanel) });
+        tabs.Items.Add(new TabItem { Header = "恢复策略", Content = CreateTabScrollContent(restartPanel) });
 
         var dependencyPanel = new StackPanel { Margin = new Thickness(12, 8, 12, 8) };
         dependencyPanel.Children.Add(new TextBlock
         {
             Text = "每行一个服务名，或用逗号/分号分隔。",
             Opacity = 0.7,
+            Margin = new Thickness(0, 0, 0, 10),
             TextWrapping = TextWrapping.Wrap
         });
-        dependencyPanel.Children.Add(CreateLabeledMultilineTextBox("依赖服务", state.DependenciesText, value => state.DependenciesText = value));
+        dependencyPanel.Children.Add(CreateMultilineTextBox( state.DependenciesText, value => state.DependenciesText = value));
         tabs.Items.Add(new TabItem { Header = "依赖", Content = CreateTabScrollContent(dependencyPanel) });
 
         var tabArea = new Grid
@@ -658,34 +650,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         };
     }
 
-     private static Grid CreateLabeledColumn(string label, UIElement editor, Thickness? margin = null)
-    {
-        var grid = new Grid
-        {
-            Margin = margin ?? new Thickness(0, 10, 0, 0)
-        };
-        grid.RowDefinitions.Add(new RowDefinition {});
-        grid.RowDefinitions.Add(new RowDefinition {});
 
-        var labelBlock = new TextBlock
-        {
-            Text = label,
-            Opacity = 0.78,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 12, 0)
-        };
-        Grid.SetRow(labelBlock, 0);
-        Grid.SetRow(editor, 1);
-
-        if (editor is FrameworkElement fe)
-        {
-            fe.VerticalAlignment = VerticalAlignment.Center;
-        }
-
-        grid.Children.Add(labelBlock);
-        grid.Children.Add(editor);
-        return grid;
-    }
 
     private static Grid CreateLabeledRow(string label, UIElement editor, Thickness? margin = null)
     {
@@ -716,11 +681,37 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         return grid;
     }
 
-    private static FrameworkElement CreateLabeledTextBox(string label, string initialValue, System.Action<string> onChanged)
+    private static FrameworkElement CreateLabeledTextBox(
+        string label,
+        string initialValue,
+        System.Action<string> onChanged,
+        string? formatDescription = null,
+        string? placeholder = null)
     {
         var box = new TextBox { Text = initialValue };
+        if (!string.IsNullOrWhiteSpace(placeholder))
+        {
+            MaterialDesignThemes.Wpf.HintAssist.SetHint(box, placeholder);
+        }
+
         box.TextChanged += (_, _) => onChanged(box.Text ?? string.Empty);
-        return CreateLabeledRow(label, box, new Thickness(0, 0, 0, 0));
+
+        if (string.IsNullOrWhiteSpace(formatDescription))
+        {
+            return CreateLabeledRow(label, box, new Thickness(0, 0, 0, 0));
+        }
+
+        var editorPanel = new StackPanel();
+        editorPanel.Children.Add(box);
+        editorPanel.Children.Add(new TextBlock
+        {
+            Text = formatDescription,
+            Opacity = 0.7,
+            FontSize = 12,
+            Margin = new Thickness(0, 4, 0, 0),
+            TextWrapping = TextWrapping.Wrap
+        });
+        return CreateLabeledRow(label, editorPanel, new Thickness(0, 0, 0, 0));
     }
 
     private static FrameworkElement CreateLabeledIntTextBox(string label, int initialValue, System.Action<int> onChanged)
@@ -734,7 +725,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         });
     }
 
-    private static FrameworkElement CreateLabeledMultilineTextBox(string label, string initialValue, System.Action<string> onChanged)
+    private static FrameworkElement CreateMultilineTextBox(string initialValue, System.Action<string> onChanged)
     {
         var box = new TextBox
         {
@@ -746,7 +737,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
             VerticalAlignment = VerticalAlignment.Stretch
         };
         box.TextChanged += (_, _) => onChanged(box.Text ?? string.Empty);
-        return CreateLabeledColumn(label, box);
+        return box;
     }
 
     private static FrameworkElement CreateLabeledCheckBox(string label, bool initialValue, System.Action<bool> onChanged)

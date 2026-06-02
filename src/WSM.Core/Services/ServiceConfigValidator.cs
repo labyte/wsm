@@ -180,7 +180,7 @@ public sealed class ServiceConfigValidator
     {
         if (policy == null)
         {
-            result.AddError(nameof(ManagedService.FailurePolicy), "失败重启策略不能为空。");
+            result.AddError(nameof(ManagedService.FailurePolicy), "失败恢复策略不能为空。");
             return;
         }
 

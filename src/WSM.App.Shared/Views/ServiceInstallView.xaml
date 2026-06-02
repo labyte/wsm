@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:vm="clr-namespace:WSM.App.Shared.ViewModels"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
              d:DesignHeight="520"
@@ -351,36 +352,23 @@
                 <TextBlock Grid.Column="0" Text="扩展名匹配" Style="{StaticResource FieldLabelStyle}" />
                 <TextBox Grid.Column="1"
                            Text="{Binding Draft.ExternalLogFileExtensions, UpdateSourceTrigger=PropertyChanged}"
-                           materialDesign:HintAssist.Hint=".log;.txt;.data" />
+                           materialDesign:HintAssist.Hint="{x:Static vm:ServiceConfigUiOptions.ExternalLogFileExtensionsPlaceholder}" />
               </Grid>
-              <Grid Margin="0,10,0,0">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="140" />
-                  <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="实时追踪" Style="{StaticResource FieldLabelStyle}" />
-                <CheckBox Grid.Column="1"
-                            Content="启用服务自身日志实时追踪"
-                            IsChecked="{Binding Draft.ExternalLogRealtimeTracking}" />
-              </Grid>
-              <Grid Margin="0,10,0,0">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="140" />
-                  <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Tail 行数" Style="{StaticResource FieldLabelStyle}" />
-                <TextBox Grid.Column="1" Text="{Binding Draft.ExternalLogTailLines, UpdateSourceTrigger=PropertyChanged}" />
-              </Grid>
+              <TextBlock Margin="140,4,0,0"
+                           Opacity="0.7"
+                           FontSize="12"
+                           TextWrapping="Wrap"
+                           Text="{x:Static vm:ServiceConfigUiOptions.ExternalLogFileExtensionsFormatDescription}" />
               <TextBlock Margin="140,6,0,0"
                            Opacity="0.7"
                            TextWrapping="Wrap"
-                           Text="提示：将按扩展名过滤日志目录文件，并自动读取最新改动文件；同时 WinSW 日志模式会设为 none，避免重复输出。" />
+                           Text="提示：将按扩展名过滤日志目录并自动读取最新改动文件；WinSW 日志模式会设为 none。实时跟踪与最大条数请在「服务控制台」中调整。" />
             </StackPanel>
           </StackPanel>
           </Grid>
         </TabItem>
 
-        <TabItem Header="重启策略">
+        <TabItem Header="恢复策略">
           <Grid HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="0.1*" />

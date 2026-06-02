@@ -85,7 +85,7 @@ public partial class ServiceConfigDraft : ObservableObject
     private string _externalLogDirectoryPath = string.Empty;
 
     [ObservableProperty]
-    private string _externalLogFileExtensions = ".log;.txt";
+    private string _externalLogFileExtensions = ServiceConfigUiOptions.DefaultExternalLogFileExtensions;
 
     [ObservableProperty]
     private bool _externalLogRealtimeTracking = true;
@@ -123,7 +123,7 @@ public partial class ServiceConfigDraft : ObservableObject
             ExternalLogFilePath = service.ExternalLogFilePath,
             ExternalLogDirectoryPath = service.ExternalLogDirectoryPath,
             ExternalLogFileExtensions = string.IsNullOrWhiteSpace(service.ExternalLogFileExtensions)
-                ? ".log;.txt"
+                ? ServiceConfigUiOptions.DefaultExternalLogFileExtensions
                 : service.ExternalLogFileExtensions,
             ExternalLogRealtimeTracking = service.ExternalLogRealtimeTracking,
             ExternalLogTailLines = service.ExternalLogTailLines > 0 ? service.ExternalLogTailLines : 500
@@ -188,12 +188,6 @@ public partial class ServiceConfigDraft : ObservableObject
             if (string.IsNullOrWhiteSpace(ExternalLogFileExtensions))
             {
                 error = "外部日志扩展名不能为空。";
-                return false;
-            }
-
-            if (ExternalLogTailLines <= 0)
-            {
-                error = "外部日志 tail 行数必须大于 0。";
                 return false;
             }
         }
@@ -396,7 +390,7 @@ public partial class ServiceConfigDraft : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(extensionsText))
         {
-            return ".log;.txt";
+            return ServiceConfigUiOptions.DefaultExternalLogFileExtensions;
         }
 
         var normalizedInput = extensionsText ?? string.Empty;
@@ -408,7 +402,7 @@ public partial class ServiceConfigDraft : ObservableObject
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         return normalized.Count == 0
-            ? ".log;.txt"
+            ? ServiceConfigUiOptions.DefaultExternalLogFileExtensions
             : string.Join(";", normalized);
     }
 }

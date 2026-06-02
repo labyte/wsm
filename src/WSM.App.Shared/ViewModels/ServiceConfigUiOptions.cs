@@ -8,6 +8,16 @@ namespace WSM.App.Shared.ViewModels;
 /// </summary>
 public static class ServiceConfigUiOptions
 {
+    /// <summary>外部日志扩展名默认值。</summary>
+    public const string DefaultExternalLogFileExtensions = ".log";
+
+    /// <summary>外部日志扩展名输入框占位提示。</summary>
+    public const string ExternalLogFileExtensionsPlaceholder = ".log";
+
+    /// <summary>外部日志扩展名格式说明（安装页与修改配置共用）。</summary>
+    public const string ExternalLogFileExtensionsFormatDescription =
+        "格式：多个扩展名用分号、逗号或空格分隔，每项须带点号，例如 .log 或 .log;.txt";
+
     public static readonly IReadOnlyList<DisplayOption<ManagedServiceStartMode>> StartModeOptions =
         new List<DisplayOption<ManagedServiceStartMode>>
         {

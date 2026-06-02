@@ -65,9 +65,9 @@ public sealed class ManagedService
     public string ExternalLogDirectoryPath { get; set; } = string.Empty;
 
     /// <summary>
-    /// 当日志来源为服务自身文件时，日志扩展名过滤（如 ".log;.txt"）。
+    /// 当日志来源为服务自身文件时，日志扩展名过滤（如 ".log" 或 ".log;.txt"）。
     /// </summary>
-    public string ExternalLogFileExtensions { get; set; } = ".log;.txt";
+    public string ExternalLogFileExtensions { get; set; } = ".log";
 
     /// <summary>
     /// 是否启用外部日志实时跟踪。
