@@ -79,7 +79,7 @@ public sealed class NLogOperationLogSink : IOperationLogSink
             var fileTarget = new FileTarget("operation-file")
             {
                 FileName = OperationLogPathHelper.BuildNLogDailyFileNameLayout(operationLogPath),
-                Layout = "${longdate}|${event-properties:item=operationLevel}|${event-properties:item=category}|${message}",
+                Layout = "${longdate} ${event-properties:item=operationLevel:padding=-8} ${event-properties:item=category:padding=-3} ${message}",
                 KeepFileOpen = false,
                 Encoding = System.Text.Encoding.UTF8
             };
