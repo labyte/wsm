@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "skills": {
+    "logo": {
+      "name": "Logo",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=logo",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-06-02T01:02:20Z"
+    }
+  }
+}

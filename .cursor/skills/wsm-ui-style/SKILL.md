@@ -12,9 +12,10 @@ disable-model-invocation: true
 - 对齐 `MaterialDesignInXamlToolkit` 示例项目的布局和交互。
 
 ## 技术约束
+- **UI 框架：WPF**（Legacy net48 / Modern net8），**不是 WinUI 3**。
 - 使用 `MaterialDesignThemes.Wpf` 的现有组件与样式键。
 - 优先复用 `MaterialDesign3.NavigationRail*`、`MaterialDesign3.NavigationDrawer*` 样式。
-- 不引入 WinUI 2.x、UWP 已弃用 API。
+- 不引入 WinUI 2.x / WinUI 3、Windows App SDK、UWP 已弃用 API。
 
 ## 实施规则
 1. 侧边栏与导航

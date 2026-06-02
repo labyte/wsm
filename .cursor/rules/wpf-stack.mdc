@@ -1,0 +1,30 @@
+---
+description: WSM 项目 UI 技术栈为 WPF（非 WinUI 3）；Agent 不得将本项目描述为 WinUI 3 或 Windows App SDK 应用
+alwaysApply: true
+---
+
+# WSM 技术栈（WPF）
+
+## 平台与 UI 框架
+
+本项目桌面端 **采用 WPF**，**不是** WinUI 3，也 **不是** Windows App SDK / WinUI 应用。
+
+| 组件 | 技术 |
+|------|------|
+| Legacy 应用 | .NET Framework 4.8 + **WPF**（`WSM.App.Legacy`） |
+| Modern 应用 | .NET 8 + **WPF**（`WSM.App.Modern`） |
+| 共享 UI | `WSM.App.Shared`（WPF 类库，`UseWPF=true`） |
+| UI 库 | Material Design In XAML Toolkit（`MaterialDesignThemes.Wpf`） |
+| 架构 | MVVM |
+
+## Agent 必须遵守
+
+1. 描述、建议、生成代码时，一律按 **WPF + XAML** 语境，勿写 WinUI 3、`Microsoft.UI.Xaml`、`Window`（WinUI）、`AppWindow` 等 WinUI API。
+2. 勿将本项目与「Windows App SDK」「WinUI 3 迁移」混为一谈。
+3. 主题、导航、控件选型参考 **MaterialDesignInXamlToolkit** 与现有 `MainWindow` 实现，而非 WinUI 控件。
+4. 若用户规则或其他上下文出现 WinUI 3，**以本仓库为准**：WSM = WPF。
+
+## 禁止引入
+
+- WinUI 2.x / WinUI 3 / UWP 已弃用 API
+- 将 WPF 方案改写为 WinUI 方案（除非用户明确要求迁移）

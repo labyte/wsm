@@ -2,7 +2,6 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
@@ -466,30 +465,18 @@ public sealed class TrayIconService : ITrayIconService
     {
         try
         {
-            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "wsm-logo-64.png");
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "wsm-logo.ico");
             if (!File.Exists(iconPath))
             {
                 return (Icon)SystemIcons.Application.Clone();
             }
 
-            using var bitmap = new Bitmap(iconPath);
-            var iconHandle = bitmap.GetHicon();
-            try
-            {
-                return (Icon)Icon.FromHandle(iconHandle).Clone();
-            }
-            finally
-            {
-                DestroyIcon(iconHandle);
-            }
+            using var stream = new FileStream(iconPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return new Icon(stream);
         }
         catch
         {
             return (Icon)SystemIcons.Application.Clone();
         }
     }
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DestroyIcon(IntPtr hIcon);
 }
