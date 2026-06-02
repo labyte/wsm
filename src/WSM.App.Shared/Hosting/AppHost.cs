@@ -42,10 +42,8 @@ public sealed class AppHost
     private static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton(_ => new SnackbarMessageQueue(TimeSpan.FromSeconds(4)));
-        services.AddSingleton<ISnackbarService, SnackbarService>();
         services.AddSingleton<IThemePreferenceStore, ThemePreferenceStore>();
         services.AddSingleton<ICloseWindowPreferenceStore, CloseWindowPreferenceStore>();
-        services.AddSingleton<ITrayIconService, TrayIconService>();
         services.AddSingleton<AdminElevationService>();
         services.AddSingleton<ConsoleLogHelper>();
 
@@ -55,6 +53,9 @@ public sealed class AppHost
             new CompositeOperationLogSink(
                 sp.GetRequiredService<AppOperationLogService>(),
                 sp.GetRequiredService<NLogOperationLogSink>()));
+        services.AddSingleton<ISnackbarService, SnackbarService>();
+
+        services.AddSingleton<ITrayIconService, TrayIconService>();
 
         services.AddSingleton<ServiceListViewModel>();
         services.AddSingleton<ServiceInstallViewModel>();

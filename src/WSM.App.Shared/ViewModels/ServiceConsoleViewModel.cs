@@ -163,9 +163,9 @@ public partial class ServiceConsoleViewModel : ObservableObject, INavigationAwar
     }
 
     [RelayCommand]
-    private void CopyAll()
+    private async Task CopyAllAsync()
     {
-        _consoleLogHelper.CopyToClipboard(DisplayText);
+        await _consoleLogHelper.CopyToClipboardAsync(DisplayText).ConfigureAwait(true);
     }
 
     [RelayCommand]
