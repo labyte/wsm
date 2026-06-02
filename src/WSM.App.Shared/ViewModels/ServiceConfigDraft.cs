@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using WSM.Core.Models;
+using WSM.Core.Services;
 
 namespace WSM.App.Shared.ViewModels;
 
@@ -133,6 +135,7 @@ public partial class ServiceConfigDraft : ObservableObject
     public bool TryValidate(out string error)
     {
         error = string.Empty;
+
         if (string.IsNullOrWhiteSpace(DisplayName))
         {
             error = "显示名称不能为空。";
@@ -145,55 +148,93 @@ public partial class ServiceConfigDraft : ObservableObject
             return false;
         }
 
+        if (!File.Exists(ExecutablePath))
+        {
+            error = "可执行文件不存在，请检查路径。";
+            return false;
+        }
+
         if (StopTimeoutSeconds <= 0)
         {
             error = "停止超时必须大于 0 秒。";
             return false;
         }
 
-        if (EnableCrashRecovery && CrashRestartDelaySeconds <= 0)
+        if (!string.IsNullOrWhiteSpace(WorkingDirectory) && !Directory.Exists(WorkingDirectory))
         {
-            error = "崩溃重启延迟必须大于 0 秒。";
+            error = "工作目录不存在，请检查路径。";
             return false;
         }
 
-        if (ResetFailureValue <= 0)
+        if (FailureAction == FailureActionType.Restart && CrashRestartDelaySeconds <= 0)
+        {
+            error = "重启间隔必须大于 0 秒。";
+            return false;
+        }
+
+        if (FailureAction == FailureActionType.Restart && ResetFailureValue <= 0)
         {
             error = "失败计数重置值必须大于 0。";
             return false;
         }
 
-        if (LogSourceMode == ServiceLogSourceMode.WinSw)
+        if (LogSourceMode == ServiceLogSourceMode.WinSw && IsWinSwRotationLogMode(LogMode))
         {
             if (LogSizeThresholdKb <= 0)
             {
-                error = "WinSW 日志大小阈值必须大于 0 KB。";
+                error = "日志文件大小上限必须大于 0 KB。";
                 return false;
             }
 
             if (LogKeepFiles <= 0)
             {
-                error = "WinSW 日志保留文件数必须大于 0。";
+                error = "日志保留文件数必须大于 0。";
                 return false;
             }
         }
-        else
+        else if (LogSourceMode == ServiceLogSourceMode.ExternalFile)
         {
             if (string.IsNullOrWhiteSpace(ExternalLogDirectoryPath))
             {
-                error = "外部日志目录不能为空。";
+                error = "日志目录不能为空。";
+                return false;
+            }
+
+            if (!Directory.Exists(ExternalLogDirectoryPath))
+            {
+                error = "日志目录不存在，请检查路径。";
                 return false;
             }
 
             if (string.IsNullOrWhiteSpace(ExternalLogFileExtensions))
             {
-                error = "外部日志扩展名不能为空。";
+                error = "日志扩展名不能为空。";
                 return false;
             }
         }
 
+        var service = new ManagedService
+        {
+            Id = Id,
+            LogPolicy = LogPolicy.CreateDefault()
+        };
+        ApplyTo(service);
+
+        var validator = new ServiceConfigValidator();
+        var result = validator.Validate(service, excludeServiceId: Id);
+        if (!result.IsValid)
+        {
+            error = result.Errors[0].Message;
+            return false;
+        }
+
         return true;
     }
+
+    private static bool IsWinSwRotationLogMode(LogMode mode)
+        => mode == LogMode.RollBySize
+           || mode == LogMode.RollByTime
+           || mode == LogMode.RollBySizeTime;
 
     public void ApplyTo(ManagedService service)
     {

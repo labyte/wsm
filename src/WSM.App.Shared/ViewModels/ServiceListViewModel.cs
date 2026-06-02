@@ -292,7 +292,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
 
         if (!TryApplyConfigEdits(service, dialogState, out var validationError))
         {
-            _snackbarService.ShowWarning(validationError);
+            _snackbarService.ShowError(validationError);
             return;
         }
 
@@ -467,10 +467,10 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         });
         var tabs = new TabControl();
 
-        var basicPanel = new StackPanel { Margin = new Thickness(12, 8, 12, 8) };
-        basicPanel.Children.Add(CreateLabeledTextBox("显示名称", state.DisplayName, value => state.DisplayName = value));
+        var basicPanel = new StackPanel { Margin = new Thickness(12, 12, 12, 12) };
+        basicPanel.Children.Add(CreateLabeledTextBox("显示名称", state.DisplayName, value => state.DisplayName = value, required: true));
         basicPanel.Children.Add(CreateLabeledTextBox("描述", state.Description, value => state.Description = value));
-        basicPanel.Children.Add(CreateLabeledTextBox("可执行路径", state.ExecutablePath, value => state.ExecutablePath = value));
+        basicPanel.Children.Add(CreateLabeledTextBox("可执行路径", state.ExecutablePath, value => state.ExecutablePath = value, required: true));
         basicPanel.Children.Add(CreateLabeledTextBox("工作目录", state.WorkingDirectory, value => state.WorkingDirectory = value));
         basicPanel.Children.Add(CreateLabeledTextBox("启动参数", state.Arguments, value => state.Arguments = value));
         basicPanel.Children.Add(CreateLabeledOptionComboBox(
@@ -481,11 +481,11 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         basicPanel.Children.Add(CreateLabeledCheckBox("启用延迟自动启动", state.DelayedAutoStart, value => state.DelayedAutoStart = value));
         basicPanel.Children.Add(CreateLabeledCheckBox("启用自动刷新配置", state.AutoRefresh, value => state.AutoRefresh = value));
         basicPanel.Children.Add(CreateLabeledCheckBox("隐藏程序窗口", state.HideWindow, value => state.HideWindow = value));
-        basicPanel.Children.Add(CreateLabeledIntTextBox("停止超时（秒）", state.StopTimeoutSeconds, value => state.StopTimeoutSeconds = value));
+        basicPanel.Children.Add(CreateLabeledIntTextBox("停止超时", state.StopTimeoutSeconds, value => state.StopTimeoutSeconds = value, required: true));
         basicPanel.Children.Add(CreateLabeledCheckBox("安装后自动启动", state.StartAfterInstall, value => state.StartAfterInstall = value));
         tabs.Items.Add(new TabItem { Header = "基本", Content = CreateTabScrollContent(basicPanel) });
 
-        var logPanel = new StackPanel { Margin = new Thickness(12, 8, 12, 8) };
+        var logPanel = new StackPanel { Margin = new Thickness(12, 12, 12, 12) };
         logPanel.Children.Add(CreateLabeledOptionComboBox(
             "日志方案",
             state.LogSourceMode,
@@ -496,7 +496,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
             state.LogMode,
             ServiceConfigUiOptions.WinSwLogModeOptions,
             value => state.LogMode = value);
-        var logSizeEditor = CreateLabeledIntTextBox("大小阈值（KB）", state.LogSizeThresholdKb, value => state.LogSizeThresholdKb = value);
+        var logSizeEditor = CreateLabeledIntTextBox("大小阈值(KB)", state.LogSizeThresholdKb, value => state.LogSizeThresholdKb = value);
         var logKeepFilesEditor = CreateLabeledIntTextBox("保留文件数", state.LogKeepFiles, value => state.LogKeepFiles = value);
         var externalLogDirectoryEditor = CreateLabeledTextBox("日志目录", state.ExternalLogDirectoryPath, value => state.ExternalLogDirectoryPath = value);
         var externalLogExtensionsEditor = CreateLabeledTextBox(
@@ -540,13 +540,13 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
             nameof(ServiceConfigDraft.LogSourceMode));
         tabs.Items.Add(new TabItem { Header = "日志", Content = CreateTabScrollContent(logPanel) });
 
-        var restartPanel = new StackPanel { Margin = new Thickness(12, 8, 12, 8) };
+        var restartPanel = new StackPanel { Margin = new Thickness(12, 12, 12, 12) };
         restartPanel.Children.Add(CreateLabeledOptionComboBox(
             "失败动作",
             state.FailureAction,
             ServiceConfigUiOptions.FailureActionOptions,
             value => state.FailureAction = value));
-        var restartDelayEditor = CreateLabeledIntTextBox("重启间隔（秒）", state.CrashRestartDelaySeconds, value => state.CrashRestartDelaySeconds = value);
+        var restartDelayEditor = CreateLabeledIntTextBox("重启间隔(秒)", state.CrashRestartDelaySeconds, value => state.CrashRestartDelaySeconds = value);
         var resetFailureValueEditor = CreateLabeledIntTextBox("重置失败计数值", state.ResetFailureValue, value => state.ResetFailureValue = value);
         var resetFailureUnitEditor = CreateLabeledOptionComboBox(
             "重置失败计数单位",
@@ -574,12 +574,12 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
             nameof(ServiceConfigDraft.FailureAction));
         tabs.Items.Add(new TabItem { Header = "恢复策略", Content = CreateTabScrollContent(restartPanel) });
 
-        var dependencyPanel = new StackPanel { Margin = new Thickness(12, 8, 12, 8) };
+        var dependencyPanel = new StackPanel { Margin = new Thickness(12, 12, 12, 12) };
         dependencyPanel.Children.Add(new TextBlock
         {
             Text = "每行一个服务名，或用逗号/分号分隔。",
             Opacity = 0.7,
-            Margin = new Thickness(0, 0, 0, 10),
+            Margin = new Thickness(0, 0, 0, 14),
             TextWrapping = TextWrapping.Wrap
         });
         dependencyPanel.Children.Add(CreateMultilineTextBox( state.DependenciesText, value => state.DependenciesText = value));
@@ -596,6 +596,23 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         tabs.VerticalAlignment = VerticalAlignment.Stretch;
         tabArea.Children.Add(tabs);
         container.Children.Add(tabArea);
+
+        var validationMessage = new TextBlock
+        {
+            Visibility = Visibility.Collapsed,
+            Margin = new Thickness(0, 12, 0, 0),
+            TextWrapping = TextWrapping.Wrap
+        };
+        validationMessage.SetResourceReference(TextBlock.ForegroundProperty, "MaterialDesignValidationErrorBrush");
+        container.Children.Add(validationMessage);
+
+        state.PropertyChanged += (_, _) =>
+        {
+            if (validationMessage.Visibility == Visibility.Visible)
+            {
+                validationMessage.Visibility = Visibility.Collapsed;
+            }
+        };
 
         var actions = new StackPanel
         {
@@ -628,11 +645,21 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         var saveButton = new Button
         {
             Content = "保存并应用",
-            MinWidth = 96,
-            Command = DialogHost.CloseDialogCommand,
-            CommandParameter = ConfigDialogAction.Save
+            MinWidth = 96
         };
         saveButton.SetResourceReference(FrameworkElement.StyleProperty, "MaterialDesignFlatButton");
+        saveButton.Click += (_, _) =>
+        {
+            if (!state.TryValidate(out var validationError))
+            {
+                validationMessage.Text = validationError;
+                validationMessage.Visibility = Visibility.Visible;
+                return;
+            }
+
+            validationMessage.Visibility = Visibility.Collapsed;
+            DialogHost.Close("RootDialogHost", ConfigDialogAction.Save);
+        };
 
         actions.Children.Add(cancelButton);
         actions.Children.Add(uninstallButton);
@@ -643,9 +670,11 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         return result is ConfigDialogAction action ? action : ConfigDialogAction.Cancel;
     }
 
-    private const double ConfigDialogTabAreaHeight = 380;
+    private const double ConfigDialogTabAreaHeight = 460;
 
     private const double ConfigDialogLabelWidth = 140;
+
+    private const double ConfigDialogFieldRowSpacing = 12;
 
     private static ScrollViewer CreateTabScrollContent(UIElement content)
     {
@@ -660,18 +689,18 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
 
 
 
-    private static Grid CreateLabeledRow(string label, UIElement editor, Thickness? margin = null)
+    private static Grid CreateLabeledRow(string label, UIElement editor, bool required = false, Thickness? margin = null)
     {
         var grid = new Grid
         {
-            Margin = margin ?? new Thickness(0, 10, 0, 0)
+            Margin = margin ?? new Thickness(0, ConfigDialogFieldRowSpacing, 0, 0)
         };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ConfigDialogLabelWidth) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         var labelBlock = new TextBlock
         {
-            Text = label,
+            Text = ServiceConfigUiOptions.FormatFieldLabel(label, required),
             Opacity = 0.78,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 12, 0)
@@ -694,7 +723,8 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         string initialValue,
         System.Action<string> onChanged,
         string? formatDescription = null,
-        string? placeholder = null)
+        string? placeholder = null,
+        bool required = false)
     {
         var box = new TextBox { Text = initialValue };
         if (!string.IsNullOrWhiteSpace(placeholder))
@@ -706,7 +736,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
 
         if (string.IsNullOrWhiteSpace(formatDescription))
         {
-            return CreateLabeledRow(label, box, new Thickness(0, 0, 0, 0));
+            return CreateLabeledRow(label, box, required);
         }
 
         var editorPanel = new StackPanel();
@@ -716,13 +746,17 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
             Text = formatDescription,
             Opacity = 0.7,
             FontSize = 12,
-            Margin = new Thickness(0, 4, 0, 0),
+            Margin = new Thickness(0, 6, 0, 0),
             TextWrapping = TextWrapping.Wrap
         });
-        return CreateLabeledRow(label, editorPanel, new Thickness(0, 0, 0, 0));
+        return CreateLabeledRow(label, editorPanel, required);
     }
 
-    private static FrameworkElement CreateLabeledIntTextBox(string label, int initialValue, System.Action<int> onChanged)
+    private static FrameworkElement CreateLabeledIntTextBox(
+        string label,
+        int initialValue,
+        System.Action<int> onChanged,
+        bool required = false)
     {
         return CreateLabeledTextBox(label, initialValue.ToString(), value =>
         {
@@ -730,7 +764,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
             {
                 onChanged(parsed);
             }
-        });
+        }, required: required);
     }
 
     private static FrameworkElement CreateMultilineTextBox(string initialValue, System.Action<string> onChanged)
@@ -748,7 +782,11 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         return box;
     }
 
-    private static FrameworkElement CreateLabeledCheckBox(string label, bool initialValue, System.Action<bool> onChanged)
+    private static FrameworkElement CreateLabeledCheckBox(
+        string label,
+        bool initialValue,
+        System.Action<bool> onChanged,
+        bool required = false)
     {
         var checkBox = new CheckBox
         {
@@ -757,14 +795,15 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         };
         checkBox.Checked += (_, _) => onChanged(true);
         checkBox.Unchecked += (_, _) => onChanged(false);
-        return CreateLabeledRow(label, checkBox);
+        return CreateLabeledRow(label, checkBox, required);
     }
 
     private static FrameworkElement CreateLabeledOptionComboBox<T>(
         string label,
         T initialValue,
         System.Collections.Generic.IReadOnlyList<DisplayOption<T>> options,
-        System.Action<T> onChanged)
+        System.Action<T> onChanged,
+        bool required = false)
     {
         var combo = new ComboBox
         {
@@ -781,7 +820,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
             }
         };
 
-        return CreateLabeledRow(label, combo, new Thickness(0, 0, 0, 0));
+        return CreateLabeledRow(label, combo, required);
     }
 
     private static bool IsWinSwRotationMode(LogMode mode)

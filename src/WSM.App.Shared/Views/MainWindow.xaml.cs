@@ -48,6 +48,7 @@ public partial class MainWindow : Window
         }
         else
         {
+            ApplyInitialLightThemeIfNeeded();
             SyncThemeToggleState();
         }
     }
@@ -67,15 +68,31 @@ public partial class MainWindow : Window
 
     private void ApplyTheme(bool isDarkTheme, bool persist)
     {
+        if (isDarkTheme)
+        {
+            AppThemeCustomizer.ClearOverrides();
+        }
+
         var theme = _paletteHelper.GetTheme();
         theme.SetBaseTheme(isDarkTheme ? BaseTheme.Dark : BaseTheme.Light);
         _paletteHelper.SetTheme(theme);
+
+        if (!isDarkTheme)
+        {
+            AppThemeCustomizer.ApplyIfLight(_paletteHelper);
+        }
+
         DarkModeToggleButton.IsChecked = isDarkTheme;
 
         if (persist)
         {
             _themePreferenceStore.SaveIsDarkTheme(isDarkTheme);
         }
+    }
+
+    private void ApplyInitialLightThemeIfNeeded()
+    {
+        AppThemeCustomizer.ApplyIfLight(_paletteHelper);
     }
 
     private void Window_OnLoaded(object sender, RoutedEventArgs e)

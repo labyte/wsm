@@ -18,6 +18,10 @@ public static class ServiceConfigUiOptions
     public const string ExternalLogFileExtensionsFormatDescription =
         "格式：多个扩展名用分号、逗号或空格分隔，每项须带点号，例如 .log 或 .log;.txt";
 
+    /// <summary>与添加服务页一致：必填项标签追加「 *」。</summary>
+    public static string FormatFieldLabel(string label, bool required = false)
+        => required ? $"{label} *" : label;
+
     public static readonly IReadOnlyList<DisplayOption<ManagedServiceStartMode>> StartModeOptions =
         new List<DisplayOption<ManagedServiceStartMode>>
         {
