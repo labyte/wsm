@@ -17,10 +17,6 @@
         SizeChanged="Window_SizeChanged"
         WindowStartupLocation="CenterScreen"
         Style="{StaticResource MaterialDesignWindow}"
-        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-        TextElement.FontWeight="Regular"
-        TextElement.FontSize="14"
-        FontFamily="Roboto"
         Background="{DynamicResource MaterialDesignPaper}"
         Icon="/WSM.App.Shared;component/Assets/wsm-logo.ico">
 

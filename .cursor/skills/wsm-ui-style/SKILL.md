@@ -29,7 +29,7 @@ disable-model-invocation: true
    - 主题偏好必须持久化，应用重启后恢复上次选择。
 
 3. 视觉一致性
-   - 字体默认使用 `Roboto`（与参考项目保持一致）。
+   - 全局字体在 `AppTheme.xaml`：`AppFontFamily`（微软雅黑 → 思源黑体 → Segoe UI → Roboto）；日志区 `AppLogFontFamily`。
    - 颜色、背景、选中态优先使用 MaterialDesign 动态资源，避免硬编码颜色。
    - 若出现边框/描边问题，先排查容器与 `ListBoxItem` 模板层级，再局部覆盖样式。
 

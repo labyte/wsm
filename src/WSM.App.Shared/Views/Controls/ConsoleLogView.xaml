@@ -193,8 +193,6 @@
              Background="Transparent"
              Foreground="#D4D4D4"
              CaretBrush="#D4D4D4"
-             FontFamily="Cascadia Mono, Consolas, Courier New, monospace"
-             FontSize="13"
              VerticalScrollBarVisibility="Auto"
              HorizontalScrollBarVisibility="Disabled">
       <TextBox.Resources>
@@ -202,7 +200,7 @@
                BasedOn="{StaticResource ConsoleVerticalScrollBarStyle}" />
       </TextBox.Resources>
       <TextBox.Style>
-        <Style TargetType="{x:Type TextBox}">
+        <Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource AppConsoleLogTextStyle}">
           <Setter Property="TextWrapping" Value="NoWrap" />
           <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
           <Style.Triggers>

@@ -9,11 +9,6 @@ namespace WSM.Infrastructure.Paths;
 /// </summary>
 public sealed class WsmPaths
 {
-    public const string WinSwToolModeGlobal = "Global";
-    public const string WinSwToolModeBundledX64 = "BundledX64";
-    public const string WinSwToolModeBundledX86 = "BundledX86";
-    public const string WinSwToolModeBundledNet461 = "BundledNet461";
-    public const string WinSwToolModeCustom = "Custom";
     public const string DefaultRuleProgramName = "ProgramName";
     public const string DefaultRulePrefixProgramName = "PrefixProgramName";
 
@@ -24,9 +19,6 @@ public sealed class WsmPaths
     private string _databaseDirectory = string.Empty;
     private string _databasePath = string.Empty;
     private string _operationLogPath = string.Empty;
-    private bool _isCustomOperationLogPath;
-    private string _winSwToolMode = WinSwToolModeBundledX64;
-    private string _customWinSwPath = string.Empty;
     private string _serviceIdRuleMode = DefaultRuleProgramName;
     private string _serviceIdRulePrefix = "svc-";
     private string _serviceNameRuleMode = DefaultRuleProgramName;
@@ -42,24 +34,6 @@ public sealed class WsmPaths
         var configuredRoot = LoadConfiguredDataRoot();
         var initialRoot = string.IsNullOrWhiteSpace(configuredRoot) ? defaultRoot : configuredRoot!;
         UpdateDerivedPaths(initialRoot);
-
-        var configuredWinSw = LoadConfiguredWinSwTool();
-        if (!string.IsNullOrWhiteSpace(configuredWinSw.Mode))
-        {
-            _winSwToolMode = configuredWinSw.Mode!;
-        }
-
-        if (!string.IsNullOrWhiteSpace(configuredWinSw.CustomPath))
-        {
-            _customWinSwPath = configuredWinSw.CustomPath!;
-        }
-
-        var configuredOperationLogPath = LoadConfiguredOperationLogPath();
-        if (!string.IsNullOrWhiteSpace(configuredOperationLogPath))
-        {
-            _operationLogPath = Path.GetFullPath(configuredOperationLogPath!);
-            _isCustomOperationLogPath = true;
-        }
 
         var configuredNaming = LoadConfiguredServiceNamingRules();
         if (!string.IsNullOrWhiteSpace(configuredNaming.IdRuleMode))
@@ -110,10 +84,6 @@ public sealed class WsmPaths
 
     public string OperationLogPath => _operationLogPath;
 
-    public string WinSwToolMode => _winSwToolMode;
-
-    public string CustomWinSwPath => _customWinSwPath;
-
     public string ServiceIdRuleMode => _serviceIdRuleMode;
 
     public string ServiceIdRulePrefix => _serviceIdRulePrefix;
@@ -149,24 +119,9 @@ public sealed class WsmPaths
     }
 
     /// <summary>
-    /// 解析当前生效的 WinSW 可执行路径。
+    /// 解析当前生效的 WinSW 可执行路径（内置，优先 x64）。
     /// </summary>
-    public string ResolveWinSwExecutablePath()
-    {
-        switch (WinSwToolMode)
-        {
-            case WinSwToolModeGlobal:
-                return "winsw";
-            case WinSwToolModeBundledX86:
-                return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "winsw", "WinSW-x86.exe");
-            case WinSwToolModeBundledNet461:
-                return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "winsw", "WinSW-net461.exe");
-            case WinSwToolModeCustom:
-                return string.IsNullOrWhiteSpace(CustomWinSwPath) ? "winsw" : CustomWinSwPath;
-            default:
-                return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "winsw", "WinSW-x64.exe");
-        }
-    }
+    public string ResolveWinSwExecutablePath() => GetBundledWinSwPath(preferX64: true);
 
     /// <summary>
     /// 获取指定服务的部署目录。
@@ -243,71 +198,6 @@ public sealed class WsmPaths
     }
 
     /// <summary>
-    /// 设置 WinSW 执行模式与自定义路径。
-    /// </summary>
-    public bool SetWinSwTool(string toolMode, string? customPath)
-    {
-        if (string.IsNullOrWhiteSpace(toolMode))
-        {
-            throw new ArgumentException("WinSW 执行模式不能为空。", nameof(toolMode));
-        }
-
-        var normalizedMode = toolMode.Trim();
-        var normalizedCustomPath = string.IsNullOrWhiteSpace(customPath)
-            ? string.Empty
-            : Path.GetFullPath(customPath!.Trim());
-
-        lock (_sync)
-        {
-            var unchanged = string.Equals(_winSwToolMode, normalizedMode, StringComparison.Ordinal)
-                            && string.Equals(_customWinSwPath, normalizedCustomPath, StringComparison.OrdinalIgnoreCase);
-            if (unchanged)
-            {
-                return false;
-            }
-
-            _winSwToolMode = normalizedMode;
-            _customWinSwPath = normalizedCustomPath;
-            SaveConfiguredWinSwTool(_winSwToolMode, _customWinSwPath);
-        }
-
-        return true;
-    }
-
-    /// <summary>
-    /// 设置操作日志文件路径；为空时恢复默认路径。
-    /// </summary>
-    public bool SetOperationLogPath(string? operationLogPath)
-    {
-        lock (_sync)
-        {
-            var useDefault = string.IsNullOrWhiteSpace(operationLogPath);
-            var normalizedPath = useDefault
-                ? Path.Combine(AppLogsDirectory, "operations.log")
-                : Path.GetFullPath(operationLogPath!.Trim());
-            var isCustom = !useDefault;
-            var unchanged = string.Equals(_operationLogPath, normalizedPath, StringComparison.OrdinalIgnoreCase)
-                            && _isCustomOperationLogPath == isCustom;
-            if (unchanged)
-            {
-                return false;
-            }
-
-            _operationLogPath = normalizedPath;
-            _isCustomOperationLogPath = isCustom;
-            SaveConfiguredOperationLogPath(isCustom ? normalizedPath : string.Empty);
-        }
-
-        var directory = Path.GetDirectoryName(OperationLogPath);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        return true;
-    }
-
-    /// <summary>
     /// 设置并持久化服务默认命名规则。
     /// </summary>
     public bool SetServiceNamingRules(
@@ -378,10 +268,7 @@ public sealed class WsmPaths
         _servicesDirectory = Path.Combine(_dataRoot, "services");
         _databaseDirectory = Path.Combine(_dataRoot, "data");
         _databasePath = Path.Combine(_databaseDirectory, "wsm.db");
-        if (!_isCustomOperationLogPath)
-        {
-            _operationLogPath = Path.Combine(_dataRoot, "logs", "operations.log");
-        }
+        _operationLogPath = Path.Combine(_dataRoot, "logs", "operations.log");
     }
 
     private static string GetConfigFilePath()
@@ -391,15 +278,6 @@ public sealed class WsmPaths
             "WSM");
         Directory.CreateDirectory(appData);
         return Path.Combine(appData, "data-root.txt");
-    }
-
-    private static string GetWinSwConfigFilePath()
-    {
-        var appData = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "WSM");
-        Directory.CreateDirectory(appData);
-        return Path.Combine(appData, "winsw-tool.txt");
     }
 
     private static string? LoadConfiguredDataRoot()
@@ -420,39 +298,6 @@ public sealed class WsmPaths
         File.WriteAllText(configPath, dataRoot);
     }
 
-    private static (string? Mode, string? CustomPath) LoadConfiguredWinSwTool()
-    {
-        var configPath = GetWinSwConfigFilePath();
-        if (!File.Exists(configPath))
-        {
-            return (null, null);
-        }
-
-        var lines = File.ReadAllLines(configPath);
-        var mode = lines.Length > 0 ? lines[0].Trim() : null;
-        var customPath = lines.Length > 1 ? lines[1].Trim() : null;
-        return (mode, customPath);
-    }
-
-    private static void SaveConfiguredWinSwTool(string mode, string customPath)
-    {
-        var configPath = GetWinSwConfigFilePath();
-        File.WriteAllLines(configPath, new[]
-        {
-            mode ?? string.Empty,
-            customPath ?? string.Empty
-        });
-    }
-
-    private static string GetOperationLogConfigFilePath()
-    {
-        var appData = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "WSM");
-        Directory.CreateDirectory(appData);
-        return Path.Combine(appData, "operation-log-path.txt");
-    }
-
     private static string GetServiceNamingRulesConfigFilePath()
     {
         var appData = Path.Combine(
@@ -460,24 +305,6 @@ public sealed class WsmPaths
             "WSM");
         Directory.CreateDirectory(appData);
         return Path.Combine(appData, "service-naming-rules.txt");
-    }
-
-    private static string? LoadConfiguredOperationLogPath()
-    {
-        var configPath = GetOperationLogConfigFilePath();
-        if (!File.Exists(configPath))
-        {
-            return null;
-        }
-
-        var content = File.ReadAllText(configPath).Trim();
-        return string.IsNullOrWhiteSpace(content) ? null : content;
-    }
-
-    private static void SaveConfiguredOperationLogPath(string operationLogPath)
-    {
-        var configPath = GetOperationLogConfigFilePath();
-        File.WriteAllText(configPath, operationLogPath ?? string.Empty);
     }
 
     private static (string? IdRuleMode, string? IdPrefix, string? NameRuleMode, string? NamePrefix, string? DescriptionRuleMode, string? DescriptionPrefix) LoadConfiguredServiceNamingRules()

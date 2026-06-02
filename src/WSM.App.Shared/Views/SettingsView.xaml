@@ -106,57 +106,6 @@
 
     <materialDesign:Card Padding="16" Margin="0,0,0,12">
       <StackPanel>
-        <TextBlock Text="WinSW 执行配置" Style="{StaticResource MaterialDesignSubtitle2TextBlock}" />
-        <ComboBox Margin="0,8,0,0"
-                  DisplayMemberPath="Display"
-                  SelectedValuePath="Value"
-                  ItemsSource="{Binding WinSwToolModeOptions}"
-                  SelectedValue="{Binding WinSwToolMode, Mode=TwoWay}" />
-        <TextBox Margin="0,8,0,0"
-                 IsEnabled="{Binding IsCustomWinSwPathEnabled}"
-                 Text="{Binding CustomWinSwPath, UpdateSourceTrigger=PropertyChanged}"
-                 materialDesign:HintAssist.Hint="自定义 WinSW.exe 路径（仅自定义模式）" />
-        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-          <Button Style="{StaticResource MaterialDesignFlatButton}"
-                  Command="{Binding BrowseWinSwPathCommand}"
-                  IsEnabled="{Binding IsCustomWinSwPathEnabled}"
-                  Content="浏览 WinSW..." />
-          <Button Margin="8,0,0,0"
-                  Style="{StaticResource MaterialDesignFlatButton}"
-                  Command="{Binding ApplyWinSwToolCommand}"
-                  Content="应用 WinSW 配置" />
-        </StackPanel>
-        <TextBlock Margin="0,10,0,0"
-                   Opacity="0.65"
-                   TextWrapping="Wrap"
-                   Text="{Binding EffectiveWinSwPath, StringFormat=当前生效执行路径：{0}}" />
-      </StackPanel>
-    </materialDesign:Card>
-
-    <materialDesign:Card Padding="16" Margin="0,0,0,12">
-      <StackPanel>
-        <TextBlock Text="操作日志文件" Style="{StaticResource MaterialDesignSubtitle2TextBlock}" />
-        <TextBox Margin="0,8,0,0"
-                 Text="{Binding OperationLogPath, UpdateSourceTrigger=PropertyChanged}"
-                 materialDesign:HintAssist.Hint="NLog 操作日志文件路径（留空恢复默认）" />
-        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-          <Button Style="{StaticResource MaterialDesignFlatButton}"
-                  Command="{Binding BrowseOperationLogPathCommand}"
-                  Content="浏览日志文件..." />
-          <Button Margin="8,0,0,0"
-                  Style="{StaticResource MaterialDesignFlatButton}"
-                  Command="{Binding ApplyOperationLogPathCommand}"
-                  Content="应用日志路径" />
-        </StackPanel>
-        <TextBlock Margin="0,10,0,0"
-                   Opacity="0.65"
-                   TextWrapping="Wrap"
-                   Text="该文件用于记录安装、卸载、启动、停止、刷新等软件操作。留空后将恢复为默认路径（数据目录\\logs\\operations.log）。" />
-      </StackPanel>
-    </materialDesign:Card>
-
-    <materialDesign:Card Padding="16" Margin="0,0,0,12">
-      <StackPanel>
         <TextBlock Text="添加服务默认命名规则" Style="{StaticResource MaterialDesignSubtitle2TextBlock}" />
 
         <TextBlock Margin="0,8,0,0"

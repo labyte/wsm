@@ -9,6 +9,32 @@
     <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
   </ResourceDictionary.MergedDictionaries>
 
+  <!-- UI：微软雅黑 → 思源黑体 → Segoe UI → Roboto -->
+  <FontFamily x:Key="AppFontFamily">Microsoft YaHei UI, Source Han Sans SC, Segoe UI, Roboto</FontFamily>
+  <!-- 日志区：等宽优先，中文与 UI 使用相同回退链 -->
+  <FontFamily x:Key="AppLogFontFamily">Cascadia Mono, Consolas, Microsoft YaHei UI, Source Han Sans SC, Segoe UI, Roboto</FontFamily>
+
+  <Style TargetType="{x:Type Window}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+    <Setter Property="TextElement.FontFamily" Value="{StaticResource AppFontFamily}" />
+    <Setter Property="TextElement.FontSize" Value="14" />
+    <Setter Property="TextElement.FontWeight" Value="Regular" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource MaterialDesignBody}" />
+  </Style>
+
+  <Style TargetType="{x:Type TextBlock}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+  </Style>
+
+  <Style TargetType="{x:Type Control}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+  </Style>
+
+  <Style x:Key="AppConsoleLogTextStyle" TargetType="{x:Type TextBox}">
+    <Setter Property="FontFamily" Value="{StaticResource AppLogFontFamily}" />
+    <Setter Property="FontSize" Value="13" />
+  </Style>
+
   <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
   <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
   <converters:StepVisibilityConverter x:Key="StepVisibilityConverter" />
@@ -47,6 +73,7 @@
 
   <Style x:Key="ServiceStatusTextStyle" TargetType="TextBlock">
     <Setter Property="Foreground" Value="#616161" />
+    <Setter Property="Margin" Value="0 1.2 0 0" />
     <Style.Triggers>
       <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.Running}">
         <Setter Property="Foreground" Value="#2E7D32" />

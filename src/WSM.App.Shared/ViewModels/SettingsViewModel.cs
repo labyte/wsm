@@ -33,18 +33,6 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         public string Display { get; }
     }
 
-    public sealed class WinSwToolOption
-    {
-        public WinSwToolOption(string value, string display)
-        {
-            Value = value;
-            Display = display;
-        }
-
-        public string Value { get; }
-        public string Display { get; }
-    }
-
     private readonly WsmPaths _paths;
     private readonly AdminElevationService _adminElevation;
     private readonly ISnackbarService _snackbarService;
@@ -73,14 +61,6 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         _navigationService = navigationService;
         _trayIconService = trayIconService;
         _closeWindowPreferenceStore = closeWindowPreferenceStore;
-        WinSwToolModeOptions = new List<WinSwToolOption>
-        {
-            new(WsmPaths.WinSwToolModeBundledX64, "内置 WinSW x64（推荐）"),
-            new(WsmPaths.WinSwToolModeBundledX86, "内置 WinSW x86"),
-            new(WsmPaths.WinSwToolModeBundledNet461, "内置 WinSW .NET Framework"),
-            new(WsmPaths.WinSwToolModeGlobal, "全局 winsw 命令"),
-            new(WsmPaths.WinSwToolModeCustom, "自定义可执行路径")
-        };
         DefaultRuleOptions = new List<DefaultRuleOption>
         {
             new(WsmPaths.DefaultRuleProgramName, "程序名称"),
@@ -88,16 +68,12 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         };
         AppVersion = ResolveAppVersion();
         DataRootPath = _paths.DataRoot;
-        WinSwToolMode = _paths.WinSwToolMode;
-        CustomWinSwPath = _paths.CustomWinSwPath;
-        OperationLogPath = _paths.OperationLogPath;
         ServiceIdRuleMode = _paths.ServiceIdRuleMode;
         ServiceIdRulePrefix = _paths.ServiceIdRulePrefix;
         ServiceNameRuleMode = _paths.ServiceNameRuleMode;
         ServiceNameRulePrefix = _paths.ServiceNameRulePrefix;
         ServiceDescriptionRuleMode = _paths.ServiceDescriptionRuleMode;
         ServiceDescriptionRulePrefix = _paths.ServiceDescriptionRulePrefix;
-        UpdateWinSwToolDerivedState();
         RefreshAdminStatus();
         LoadCloseWindowBehavior();
     }
@@ -128,7 +104,6 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         return string.IsNullOrWhiteSpace(sharedAssemblyVersion) ? "0.1.0" : sharedAssemblyVersion!;
     }
 
-    public IReadOnlyList<WinSwToolOption> WinSwToolModeOptions { get; }
     public IReadOnlyList<DefaultRuleOption> DefaultRuleOptions { get; }
 
     [ObservableProperty]
@@ -151,27 +126,6 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
 
     [ObservableProperty]
     private bool _isApplyingDataRoot;
-
-    [ObservableProperty]
-    private string _winSwToolMode = WsmPaths.WinSwToolModeBundledX64;
-
-    [ObservableProperty]
-    private string _customWinSwPath = string.Empty;
-
-    [ObservableProperty]
-    private bool _isCustomWinSwPathEnabled;
-
-    [ObservableProperty]
-    private string _effectiveWinSwPath = string.Empty;
-
-    [ObservableProperty]
-    private bool _isApplyingWinSwTool;
-
-    [ObservableProperty]
-    private string _operationLogPath = string.Empty;
-
-    [ObservableProperty]
-    private bool _isApplyingOperationLogPath;
 
     [ObservableProperty]
     private string _serviceIdRuleMode = WsmPaths.DefaultRuleProgramName;
@@ -211,16 +165,12 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
     {
         LoadCloseWindowBehavior();
         DataRootPath = _paths.DataRoot;
-        WinSwToolMode = _paths.WinSwToolMode;
-        CustomWinSwPath = _paths.CustomWinSwPath;
-        OperationLogPath = _paths.OperationLogPath;
         ServiceIdRuleMode = _paths.ServiceIdRuleMode;
         ServiceIdRulePrefix = _paths.ServiceIdRulePrefix;
         ServiceNameRuleMode = _paths.ServiceNameRuleMode;
         ServiceNameRulePrefix = _paths.ServiceNameRulePrefix;
         ServiceDescriptionRuleMode = _paths.ServiceDescriptionRuleMode;
         ServiceDescriptionRulePrefix = _paths.ServiceDescriptionRulePrefix;
-        UpdateWinSwToolDerivedState();
         RefreshAdminStatus();
     }
 
@@ -288,37 +238,6 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         if (dialog.ShowDialog() == DialogResult.OK)
         {
             DataRootPath = dialog.SelectedPath;
-        }
-    }
-
-    [RelayCommand]
-    private void BrowseWinSwPath()
-    {
-        using var dialog = new OpenFileDialog
-        {
-            Filter = "可执行文件 (*.exe)|*.exe|所有文件 (*.*)|*.*",
-            FileName = CustomWinSwPath
-        };
-
-        if (dialog.ShowDialog() == DialogResult.OK)
-        {
-            CustomWinSwPath = dialog.FileName;
-        }
-    }
-
-    [RelayCommand]
-    private void BrowseOperationLogPath()
-    {
-        using var dialog = new SaveFileDialog
-        {
-            Filter = "日志文件 (*.log)|*.log|文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*",
-            FileName = string.IsNullOrWhiteSpace(OperationLogPath) ? "operations.log" : Path.GetFileName(OperationLogPath),
-            InitialDirectory = ResolveInitialDirectory(OperationLogPath, _paths.DataRoot)
-        };
-
-        if (dialog.ShowDialog() == DialogResult.OK)
-        {
-            OperationLogPath = dialog.FileName;
         }
     }
 
@@ -404,7 +323,7 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
             _navigationService.NavigateTo(AppPage.ServiceList);
             _snackbarService.ShowSuccess("数据目录已迁移并重绑定服务，原运行中的服务已尝试恢复。");
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
             _snackbarService.ShowError("更新数据目录失败：" + ex.Message);
         }
@@ -412,92 +331,6 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         {
             IsApplyingDataRoot = false;
         }
-    }
-
-    [RelayCommand]
-    private Task ApplyWinSwToolAsync()
-    {
-        if (IsApplyingWinSwTool)
-        {
-            return Task.CompletedTask;
-        }
-
-        IsApplyingWinSwTool = true;
-        try
-        {
-            if (WinSwToolMode == WsmPaths.WinSwToolModeCustom)
-            {
-                if (string.IsNullOrWhiteSpace(CustomWinSwPath))
-                {
-                    _snackbarService.ShowWarning("请先指定自定义 WinSW 可执行文件路径。");
-                    return Task.CompletedTask;
-                }
-
-                if (!File.Exists(CustomWinSwPath))
-                {
-                    _snackbarService.ShowError("指定的 WinSW 可执行文件不存在。");
-                    return Task.CompletedTask;
-                }
-            }
-
-            var changed = _paths.SetWinSwTool(WinSwToolMode, CustomWinSwPath);
-            UpdateWinSwToolDerivedState();
-            _snackbarService.ShowInfo(changed
-                ? "WinSW 执行配置已应用。"
-                : "WinSW 执行配置未变化。");
-        }
-        finally
-        {
-            IsApplyingWinSwTool = false;
-        }
-
-        return Task.CompletedTask;
-    }
-
-    [RelayCommand]
-    private Task ApplyOperationLogPathAsync()
-    {
-        if (IsApplyingOperationLogPath)
-        {
-            return Task.CompletedTask;
-        }
-
-        IsApplyingOperationLogPath = true;
-        try
-        {
-            var targetPath = string.IsNullOrWhiteSpace(OperationLogPath)
-                ? null
-                : OperationLogPath.Trim();
-
-            if (!string.IsNullOrWhiteSpace(targetPath))
-            {
-                targetPath = Path.GetFullPath(targetPath);
-                var directory = Path.GetDirectoryName(targetPath);
-                if (string.IsNullOrWhiteSpace(directory))
-                {
-                    _snackbarService.ShowError("操作日志文件路径无效。");
-                    return Task.CompletedTask;
-                }
-
-                Directory.CreateDirectory(directory);
-            }
-
-            var changed = _paths.SetOperationLogPath(targetPath);
-            OperationLogPath = _paths.OperationLogPath;
-            _snackbarService.ShowInfo(changed
-                ? "操作日志文件路径已应用。"
-                : "操作日志文件路径未变化。");
-        }
-        catch (Exception ex)
-        {
-            _snackbarService.ShowError("应用操作日志文件路径失败：" + ex.Message);
-        }
-        finally
-        {
-            IsApplyingOperationLogPath = false;
-        }
-
-        return Task.CompletedTask;
     }
 
     [RelayCommand]
@@ -575,23 +408,6 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         return normalizedChild.StartsWith(normalizedParent, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string ResolveInitialDirectory(string? path, string fallbackDirectory)
-    {
-        if (!string.IsNullOrWhiteSpace(path))
-        {
-            var normalized = Path.GetFullPath(path);
-            var directory = Path.GetDirectoryName(normalized);
-            if (!string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory))
-            {
-                return directory;
-            }
-        }
-
-        return Directory.Exists(fallbackDirectory)
-            ? fallbackDirectory
-            : Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-    }
-
     partial void OnMinimizeOnCloseChanged(bool value)
     {
         OnPropertyChanged(nameof(ExitOnClose));
@@ -601,16 +417,6 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         }
 
         ApplyCloseWindowBehavior(value);
-    }
-
-    partial void OnWinSwToolModeChanged(string value)
-    {
-        UpdateWinSwToolDerivedState();
-    }
-
-    partial void OnCustomWinSwPathChanged(string value)
-    {
-        UpdateWinSwToolDerivedState();
     }
 
     partial void OnServiceIdRuleModeChanged(string value)
@@ -628,38 +434,14 @@ public partial class SettingsViewModel : ObservableObject, INavigationAware
         OnPropertyChanged(nameof(IsServiceDescriptionPrefixVisible));
     }
 
-    private void UpdateWinSwToolDerivedState()
-    {
-        IsCustomWinSwPathEnabled = string.Equals(WinSwToolMode, WsmPaths.WinSwToolModeCustom, StringComparison.Ordinal);
-        EffectiveWinSwPath = ResolveEffectiveWinSwPathPreview();
-    }
-
-    private string ResolveEffectiveWinSwPathPreview()
-    {
-        if (string.Equals(WinSwToolMode, WsmPaths.WinSwToolModeCustom, StringComparison.Ordinal)
-            && !string.IsNullOrWhiteSpace(CustomWinSwPath))
-        {
-            return CustomWinSwPath;
-        }
-
-        if (string.Equals(WinSwToolMode, WsmPaths.WinSwToolModeGlobal, StringComparison.Ordinal))
-        {
-            return "winsw（PATH）";
-        }
-
-        return _paths.ResolveWinSwExecutablePath();
-    }
-
     private async Task<OperationResult> RebindServiceToNewDataRootAsync(ManagedService service)
     {
-        // 优先 refresh：可更新 SCM 中的包装器路径
         var refreshResult = await _winSwHostService.RefreshAsync(service).ConfigureAwait(true);
         if (refreshResult.Success)
         {
             return refreshResult;
         }
 
-        // refresh 失败时，执行卸载+重装兜底
         var uninstallResult = await _winSwHostService.UninstallAsync(service.Id).ConfigureAwait(true);
         if (!uninstallResult.Success)
         {
