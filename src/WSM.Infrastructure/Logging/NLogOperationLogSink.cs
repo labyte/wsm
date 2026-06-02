@@ -10,14 +10,14 @@ using WSM.Infrastructure.Paths;
 namespace WSM.Infrastructure.Logging;
 
 /// <summary>
-/// 基于 NLog 的操作日志落盘实现。
+/// 基于 NLog 的操作日志落盘实现（按日文件 operations_yyyy-MM-dd.log）。
 /// </summary>
 public sealed class NLogOperationLogSink : IOperationLogSink
 {
     private const string LoggerName = "WSM.Operation";
     private static readonly object ConfigLock = new();
     private static bool _configured;
-    private static string _configuredFilePath = string.Empty;
+    private static string _configuredKey = string.Empty;
 
     private readonly WsmPaths _paths;
     private readonly Logger _logger;
@@ -53,7 +53,7 @@ public sealed class NLogOperationLogSink : IOperationLogSink
     private void EnsureLogFilePathReady()
     {
         var logFilePath = _paths.OperationLogPath;
-        var directory = Path.GetDirectoryName(logFilePath);
+        var directory = OperationLogPathHelper.GetLogDirectory(logFilePath);
         if (!string.IsNullOrWhiteSpace(directory))
         {
             Directory.CreateDirectory(directory);
@@ -62,11 +62,15 @@ public sealed class NLogOperationLogSink : IOperationLogSink
         EnsureNLogConfigured(logFilePath);
     }
 
-    private static void EnsureNLogConfigured(string logFilePath)
+    private static void EnsureNLogConfigured(string operationLogPath)
     {
+        var configKey = OperationLogPathHelper.GetLogDirectory(operationLogPath)
+                        + "|"
+                        + OperationLogPathHelper.GetBaseName(operationLogPath);
+
         lock (ConfigLock)
         {
-            if (_configured && string.Equals(_configuredFilePath, logFilePath, StringComparison.OrdinalIgnoreCase))
+            if (_configured && string.Equals(_configuredKey, configKey, StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -74,10 +78,8 @@ public sealed class NLogOperationLogSink : IOperationLogSink
             var configuration = new LoggingConfiguration();
             var fileTarget = new FileTarget("operation-file")
             {
-                FileName = logFilePath,
+                FileName = OperationLogPathHelper.BuildNLogDailyFileNameLayout(operationLogPath),
                 Layout = "${longdate}|${event-properties:item=operationLevel}|${event-properties:item=category}|${message}",
-                ArchiveEvery = FileArchivePeriod.Day,
-                MaxArchiveFiles = 14,
                 KeepFileOpen = false,
                 Encoding = System.Text.Encoding.UTF8
             };
@@ -87,7 +89,7 @@ public sealed class NLogOperationLogSink : IOperationLogSink
 
             LogManager.Configuration = configuration;
             _configured = true;
-            _configuredFilePath = logFilePath;
+            _configuredKey = configKey;
         }
     }
 

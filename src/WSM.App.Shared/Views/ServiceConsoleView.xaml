@@ -23,7 +23,7 @@
                    Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
 
         <ComboBox Margin="0,0,12,0"
-                  MinWidth="220"
+                  MinWidth="180"
                   VerticalAlignment="Center"
                   materialDesign:HintAssist.Hint="选择服务"
                   ItemsSource="{Binding ServiceOptions}"
@@ -46,7 +46,7 @@
                    Style="{StaticResource MaterialDesignBody2TextBlock}" />
 
         <ComboBox Margin="0,0,12,0"
-                  MinWidth="120"
+                  MinWidth="80"
                   VerticalAlignment="Center"
                   ItemsSource="{Binding MaxLineOptions}"
                   SelectedItem="{Binding SelectedMaxLines, Mode=TwoWay}" />

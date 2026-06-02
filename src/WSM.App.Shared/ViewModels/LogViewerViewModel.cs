@@ -18,7 +18,7 @@ using WSM.Infrastructure.Paths;
 namespace WSM.App.Shared.ViewModels;
 
 /// <summary>
-/// WSM 操作日志 ViewModel（综合视图读 operations.log，单服务读 wrapper.log）。
+/// WSM 操作日志 ViewModel（综合视图按日读取 operations_yyyy-MM-dd.log，单服务读 wrapper.log）。
 /// </summary>
 public partial class LogViewerViewModel : ObservableObject, INavigationAware
 {
@@ -116,16 +116,16 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
         {
             var operationLogPath = _paths.OperationLogPath;
             var clearResult = await Task.Run(() =>
-                _logReader.ClearLogFilesDetailed(new[] { operationLogPath })).ConfigureAwait(true);
+                _logReader.ClearOperationLogsDetailed(operationLogPath)).ConfigureAwait(true);
             DisplayText = string.Empty;
 
             if (clearResult.ClearedCount > 0)
             {
-                _snackbarService.ShowSuccess("综合操作日志已清空（operations.log）");
+                _snackbarService.ShowSuccess($"综合操作日志已清空（处理 {clearResult.ClearedCount} 个文件）");
             }
             else
             {
-                _snackbarService.ShowInfo("未清理到 operations.log，请确认文件路径与权限。");
+                _snackbarService.ShowInfo("未清理到操作日志文件，请确认文件路径与权限。");
             }
 
             if (clearResult.Failures.Count > 0)
@@ -133,7 +133,7 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
                 var preview = string.Join(Environment.NewLine, clearResult.Failures
                     .Take(5)
                     .Select(x => $"{x.FilePath}（{x.Reason}）"));
-                _snackbarService.ShowWarning("operations.log 清空失败：" + Environment.NewLine + preview);
+                _snackbarService.ShowWarning("部分操作日志清空失败：" + Environment.NewLine + preview);
             }
 
             await RefreshAsync().ConfigureAwait(true);
@@ -207,11 +207,13 @@ public partial class LogViewerViewModel : ObservableObject, INavigationAware
     private async Task RefreshCombinedAsync()
     {
         var operationLogPath = _paths.OperationLogPath;
+        var activeLogFile = await Task.Run(() =>
+            _logReader.ResolveOperationLogFileForRead(operationLogPath)).ConfigureAwait(true);
         var logLines = await Task.Run(() =>
             _logReader.ReadOperationLog(operationLogPath, SelectedMaxLines)).ConfigureAwait(true);
         ApplyLogLines(logLines);
-        LogSchemeText = "综合操作日志";
-        LogPathText = string.IsNullOrWhiteSpace(operationLogPath) ? "—" : operationLogPath;
+        LogSchemeText = "综合（按日）";
+        LogPathText = string.IsNullOrWhiteSpace(activeLogFile) ? "—" : activeLogFile;
     }
 
     private async Task RefreshServiceWrapperAsync()

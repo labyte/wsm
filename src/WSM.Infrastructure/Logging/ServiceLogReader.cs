@@ -162,7 +162,19 @@ public sealed class ServiceLogReader
     }
 
     /// <summary>
-    /// 读取 WSM 操作日志文件（operations.log，保持文件内原始顺序）。
+    /// 发现目录下所有操作日志文件（按日文件及旧版滚动文件，供清空使用）。
+    /// </summary>
+    public IReadOnlyList<string> DiscoverOperationLogFiles(string operationLogPath)
+        => OperationLogPathHelper.DiscoverAllOperationLogFiles(operationLogPath);
+
+    /// <summary>
+    /// 解析综合日志读取目标：优先当天按日文件，否则取最后改动的日志文件。
+    /// </summary>
+    public string ResolveOperationLogFileForRead(string operationLogPath, DateTime? referenceTime = null)
+        => OperationLogPathHelper.ResolveFileForRead(operationLogPath, referenceTime);
+
+    /// <summary>
+    /// 读取当天（或回退至最新）操作日志文件。
     /// </summary>
     public IReadOnlyList<ServiceLogLine> ReadOperationLog(string operationLogPath, int maxLines = 3000)
     {
@@ -171,8 +183,67 @@ public sealed class ServiceLogReader
             return Array.Empty<ServiceLogLine>();
         }
 
-        var lines = ReadLogFile(string.Empty, operationLogPath, "operations").ToList();
+        var file = ResolveOperationLogFileForRead(operationLogPath);
+        var lines = ReadLogFile(string.Empty, file, "operations").ToList();
         return TakeLastSafe(lines, maxLines);
+    }
+
+    /// <summary>
+    /// 清空综合操作日志：删除非当天的日志文件，并截断当天日志文件内容。
+    /// </summary>
+    public LogClearResult ClearOperationLogsDetailed(string operationLogPath, DateTime? referenceTime = null)
+    {
+        var result = new LogClearResult();
+        if (string.IsNullOrWhiteSpace(operationLogPath))
+        {
+            return result;
+        }
+
+        var todayPath = OperationLogPathHelper.BuildDailyLogFilePath(
+            operationLogPath,
+            (referenceTime ?? DateTime.Now).Date);
+        var allFiles = DiscoverOperationLogFiles(operationLogPath);
+        var processedToday = false;
+
+        foreach (var filePath in allFiles)
+        {
+            if (string.Equals(filePath, todayPath, StringComparison.OrdinalIgnoreCase))
+            {
+                var truncateResult = ClearLogFilesDetailed(new[] { filePath });
+                result.ClearedCount += truncateResult.ClearedCount;
+                result.Failures.AddRange(truncateResult.Failures);
+                processedToday = true;
+                continue;
+            }
+
+            try
+            {
+                if (!File.Exists(filePath))
+                {
+                    continue;
+                }
+
+                File.Delete(filePath);
+                result.ClearedCount++;
+            }
+            catch (IOException)
+            {
+                result.Failures.Add(new LogClearFailure { FilePath = filePath, Reason = "文件被占用" });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                result.Failures.Add(new LogClearFailure { FilePath = filePath, Reason = "权限不足" });
+            }
+        }
+
+        if (!processedToday && File.Exists(todayPath))
+        {
+            var truncateToday = ClearLogFilesDetailed(new[] { todayPath });
+            result.ClearedCount += truncateToday.ClearedCount;
+            result.Failures.AddRange(truncateToday.Failures);
+        }
+
+        return result;
     }
 
     /// <summary>
