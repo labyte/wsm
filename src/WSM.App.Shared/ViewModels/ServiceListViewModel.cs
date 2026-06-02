@@ -26,6 +26,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
     private readonly IServiceRepository _serviceRepository;
     private readonly IWinSwHostService _winSwHostService;
     private readonly ISnackbarService _snackbarService;
+    private readonly ITrayIconService _trayIconService;
     private readonly WsmPaths _paths;
     private readonly INavigationService _navigationService;
     private readonly ServiceConsoleViewModel _serviceConsoleViewModel;
@@ -35,6 +36,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         IServiceRepository serviceRepository,
         IWinSwHostService winSwHostService,
         ISnackbarService snackbarService,
+        ITrayIconService trayIconService,
         WsmPaths paths,
         INavigationService navigationService,
         ServiceConsoleViewModel serviceConsoleViewModel)
@@ -42,6 +44,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         _serviceRepository = serviceRepository;
         _winSwHostService = winSwHostService;
         _snackbarService = snackbarService;
+        _trayIconService = trayIconService;
         _paths = paths;
         _navigationService = navigationService;
         _serviceConsoleViewModel = serviceConsoleViewModel;
@@ -100,6 +103,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
             }
 
             UpdateSelectAllState();
+            await RefreshTrayMonitoringStateAsync().ConfigureAwait(true);
         }
         finally
         {
@@ -213,10 +217,13 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         if (failed == 0)
         {
             _snackbarService.ShowSuccess($"一键卸载完成，共卸载 {removed} 项。");
-            return;
+        }
+        else
+        {
+            _snackbarService.ShowWarning($"一键卸载完成，成功 {removed} 项，失败 {failed} 项。");
         }
 
-        _snackbarService.ShowWarning($"一键卸载完成，成功 {removed} 项，失败 {failed} 项。");
+        await RefreshTrayMonitoringStateAsync().ConfigureAwait(true);
     }
 
     [RelayCommand]
@@ -375,6 +382,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         finally
         {
             item.IsBusy = false;
+            await RefreshTrayMonitoringStateAsync().ConfigureAwait(true);
         }
     }
 
@@ -838,6 +846,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         finally
         {
             item.IsBusy = false;
+            await RefreshTrayMonitoringStateAsync().ConfigureAwait(true);
         }
     }
 
@@ -883,7 +892,12 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         {
             _snackbarService.ShowWarning($"批量操作完成，失败 {failed} 项。");
         }
+
+        await RefreshTrayMonitoringStateAsync().ConfigureAwait(true);
     }
+
+    private Task RefreshTrayMonitoringStateAsync()
+        => _trayIconService.RefreshMonitoringStateAsync();
 
     public void SetSelectedServices(IEnumerable<ServiceListItemViewModel> items)
     {

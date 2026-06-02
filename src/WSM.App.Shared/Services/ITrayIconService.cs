@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace WSM.App.Shared.Services;
@@ -32,4 +33,9 @@ public interface ITrayIconService : IDisposable
     /// 退出应用程序。
     /// </summary>
     void RequestExit();
+
+    /// <summary>
+    /// 刷新托盘悬停提示与右键菜单中的服务运行统计。
+    /// </summary>
+    Task RefreshMonitoringStateAsync();
 }

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using WSM.App.Shared.ViewModels;
 using WSM.Core;
 using WSM.Core.Interfaces;
@@ -21,7 +22,7 @@ public sealed class TrayIconService : ITrayIconService
     private readonly ISnackbarService _snackbarService;
     private readonly IServiceRepository _serviceRepository;
     private readonly IWinSwHostService _winSwHostService;
-    private readonly ServiceListViewModel _serviceListViewModel;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ICloseWindowPreferenceStore _closeWindowPreferenceStore;
     private NotifyIcon? _notifyIcon;
     private Window? _mainWindow;
@@ -37,13 +38,13 @@ public sealed class TrayIconService : ITrayIconService
         ISnackbarService snackbarService,
         IServiceRepository serviceRepository,
         IWinSwHostService winSwHostService,
-        ServiceListViewModel serviceListViewModel,
+        IServiceProvider serviceProvider,
         ICloseWindowPreferenceStore closeWindowPreferenceStore)
     {
         _snackbarService = snackbarService;
         _serviceRepository = serviceRepository;
         _winSwHostService = winSwHostService;
-        _serviceListViewModel = serviceListViewModel;
+        _serviceProvider = serviceProvider;
         _closeWindowPreferenceStore = closeWindowPreferenceStore;
         MinimizeOnClose = closeWindowPreferenceStore.LoadMinimizeOnClose() ?? true;
     }
@@ -117,6 +118,8 @@ public sealed class TrayIconService : ITrayIconService
                 ToolTipIcon.Info);
         }
     }
+
+    public Task RefreshMonitoringStateAsync() => RefreshBatchMenuStateAsync();
 
     public void RequestExit()
     {
@@ -454,9 +457,10 @@ public sealed class TrayIconService : ITrayIconService
 
         return _mainWindow.Dispatcher.InvokeAsync(() =>
         {
-            if (_serviceListViewModel.RefreshCommand.CanExecute(null))
+            var serviceListViewModel = _serviceProvider.GetService<ServiceListViewModel>();
+            if (serviceListViewModel?.RefreshCommand.CanExecute(null) == true)
             {
-                _serviceListViewModel.RefreshCommand.Execute(null);
+                serviceListViewModel.RefreshCommand.Execute(null);
             }
         }).Task;
     }
