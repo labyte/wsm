@@ -12,7 +12,7 @@
   <UserControl.Resources>
     <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
       <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="Opacity" Value="0.78" />
+      <Setter Property="Opacity" Value="1" />
       <Setter Property="Margin" Value="0,0,12,0" />
     </Style>
   </UserControl.Resources>
@@ -355,12 +355,12 @@
                            materialDesign:HintAssist.Hint="{x:Static vm:ServiceConfigUiOptions.ExternalLogFileExtensionsPlaceholder}" />
               </Grid>
               <TextBlock Margin="140,4,0,0"
-                           Opacity="0.7"
+                           Opacity="0.9"
                            FontSize="12"
                            TextWrapping="Wrap"
                            Text="{x:Static vm:ServiceConfigUiOptions.ExternalLogFileExtensionsFormatDescription}" />
               <TextBlock Margin="140,6,0,0"
-                           Opacity="0.7"
+                           Opacity="0.9"
                            TextWrapping="Wrap"
                            Text="提示：将按扩展名过滤日志目录并自动读取最新改动文件；WinSW 日志模式会设为 none。实时跟踪与最大条数请在「服务控制台」中调整。" />
             </StackPanel>
@@ -452,7 +452,7 @@
               <ColumnDefinition Width="0.1*" />
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="1" Margin="0,24">
-            <TextBlock Opacity="0.7"
+            <TextBlock Opacity="0.9"
                          TextWrapping="Wrap"
                          Text="每行一个服务名，或用逗号/分号分隔。会生成多个 &lt;depend&gt; 元素。" />
             <TextBox Margin="0,10,0,0"

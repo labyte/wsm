@@ -194,7 +194,7 @@
 
           <TextBlock Text="方案"
 
-                     Opacity="0.55"
+                     Opacity="0.8"
 
                      Style="{StaticResource MaterialDesignBody2TextBlock}" />
 
@@ -214,7 +214,7 @@
 
           <TextBlock Text="路径"
 
-                     Opacity="0.55"
+                     Opacity="0.8"
 
                      Style="{StaticResource MaterialDesignBody2TextBlock}" />
 

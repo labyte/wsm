@@ -462,7 +462,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         {
             Text = "保存后会执行配置刷新（refresh），通常无需重新安装；部分参数可能需要重启服务后生效。",
             Margin = new Thickness(0, 8, 0, 12),
-            Opacity = 0.78,
+            Opacity = 0.8,
             TextWrapping = TextWrapping.Wrap
         });
         var tabs = new TabControl();
@@ -578,7 +578,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         dependencyPanel.Children.Add(new TextBlock
         {
             Text = "每行一个服务名，或用逗号/分号分隔。",
-            Opacity = 0.7,
+            Opacity = 0.8,
             Margin = new Thickness(0, 0, 0, 14),
             TextWrapping = TextWrapping.Wrap
         });
@@ -701,7 +701,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         var labelBlock = new TextBlock
         {
             Text = ServiceConfigUiOptions.FormatFieldLabel(label, required),
-            Opacity = 0.78,
+            Opacity = 1,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 12, 0)
         };
@@ -744,7 +744,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         editorPanel.Children.Add(new TextBlock
         {
             Text = formatDescription,
-            Opacity = 0.7,
+            Opacity = 1,
             FontSize = 12,
             Margin = new Thickness(0, 6, 0, 0),
             TextWrapping = TextWrapping.Wrap

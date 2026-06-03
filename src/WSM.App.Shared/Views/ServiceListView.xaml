@@ -61,7 +61,7 @@
       <TextBlock Text="暂无托管服务，请点击左下角「添加服务」注册。"
                  HorizontalAlignment="Center"
                  VerticalAlignment="Center"
-                 Opacity="0.6"
+                 Opacity="0.7"
                  Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
       <DataGrid x:Name="ServicesDataGrid"
@@ -241,7 +241,7 @@
                                    FontWeight="SemiBold"
                                    TextWrapping="Wrap" />
                         <TextBlock Margin="0,6,0,0"
-                                   Opacity="0.72"
+                                   Opacity="0.9"
                                    TextWrapping="Wrap"
                                    Text="{Binding DataContext.SelectedServices.Count, RelativeSource={RelativeSource AncestorType=UserControl}, StringFormat=当前已选 {0} 个服务，卸载后将移除部署内容。}" />
                         <StackPanel Margin="0,10,0,0"
@@ -428,7 +428,7 @@
                            FontWeight="SemiBold"
                            TextWrapping="Wrap" />
                         <TextBlock Margin="0,6,0,0"
-                           Opacity="0.8"
+                           Opacity="0.9"
                            TextWrapping="Wrap"
                            Text="此操作会移除该服务及其相关部署内容。" />
                         <StackPanel Margin="0,10,0,0"
