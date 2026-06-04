@@ -81,6 +81,7 @@
               <TextBlock Text="W"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center"
+                         FontFamily="{StaticResource AppFontBold}"
                          FontSize="16"
                          FontWeight="Bold"
                          Foreground="{DynamicResource PrimaryHueMidForegroundBrush}" />

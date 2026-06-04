@@ -11,6 +11,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MaterialDesignThemes.Wpf;
 using WSM.App.Shared.Navigation;
+using WSM.App.Shared.Resources;
 using WSM.App.Shared.Services;
 using WSM.Core.Interfaces;
 using WSM.Core.Models;
@@ -454,15 +455,15 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         container.Children.Add(new TextBlock
         {
             Text = $"服务配置 - 服务ID：{state.Id}",
-            FontSize = 18,
-            FontWeight = FontWeights.Medium
+            FontFamily = AppFonts.Medium,
+            FontSize = 18
         });
 
         container.Children.Add(new TextBlock
         {
             Text = "保存后会执行配置刷新（refresh），通常无需重新安装；部分参数可能需要重启服务后生效。",
+            FontFamily = AppFonts.Light,
             Margin = new Thickness(0, 8, 0, 12),
-            Opacity = 0.8,
             TextWrapping = TextWrapping.Wrap
         });
         var tabs = new TabControl();
@@ -578,7 +579,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         dependencyPanel.Children.Add(new TextBlock
         {
             Text = "每行一个服务名，或用逗号/分号分隔。",
-            Opacity = 0.8,
+            FontFamily = AppFonts.Light,
             Margin = new Thickness(0, 0, 0, 14),
             TextWrapping = TextWrapping.Wrap
         });
@@ -701,7 +702,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         var labelBlock = new TextBlock
         {
             Text = ServiceConfigUiOptions.FormatFieldLabel(label, required),
-            Opacity = 1,
+            FontFamily = AppFonts.Regular,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 12, 0)
         };
@@ -744,7 +745,7 @@ public partial class ServiceListViewModel : ObservableObject, INavigationAware
         editorPanel.Children.Add(new TextBlock
         {
             Text = formatDescription,
-            Opacity = 1,
+            FontFamily = AppFonts.Light,
             FontSize = 12,
             Margin = new Thickness(0, 6, 0, 0),
             TextWrapping = TextWrapping.Wrap

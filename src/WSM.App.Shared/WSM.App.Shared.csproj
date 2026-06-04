@@ -23,6 +23,7 @@
   <ItemGroup>
     <Resource Include="Assets\wsm-logo.ico" />
     <Resource Include="Assets\wsm-logo-256.png" />
+    <Resource Include="..\..\assets\fonts\AlibabaPuHuiTi-3\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

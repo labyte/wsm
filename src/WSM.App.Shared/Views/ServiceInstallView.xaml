@@ -9,14 +9,6 @@
              d:DesignHeight="520"
              d:DesignWidth="800">
 
-  <UserControl.Resources>
-    <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
-      <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="Opacity" Value="1" />
-      <Setter Property="Margin" Value="0,0,12,0" />
-    </Style>
-  </UserControl.Resources>
-
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="*" />
@@ -42,7 +34,7 @@
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="服务程序 *" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBlock Grid.Column="0" Text="服务程序 *" Style="{StaticResource AppFieldLabelStyle}" />
                   <Button Grid.Column="1"
                           Style="{StaticResource MaterialDesignFlatButton}"
                           HorizontalAlignment="Left"
@@ -55,7 +47,7 @@
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="可执行路径 *" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBlock Grid.Column="0" Text="可执行路径 *" Style="{StaticResource AppFieldLabelStyle}" />
                   <TextBox Grid.Column="1" Text="{Binding Draft.ExecutablePath, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <TextBlock Margin="140,4,0,0"
@@ -68,7 +60,7 @@
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="工作目录" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBlock Grid.Column="0" Text="工作目录" Style="{StaticResource AppFieldLabelStyle}" />
                   <TextBox Grid.Column="1" Text="{Binding Draft.WorkingDirectory, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
 
@@ -77,7 +69,7 @@
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="启动参数" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBlock Grid.Column="0" Text="启动参数" Style="{StaticResource AppFieldLabelStyle}" />
                   <TextBox Grid.Column="1" Text="{Binding Draft.Arguments, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
 
@@ -86,7 +78,7 @@
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="服务 ID *" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBlock Grid.Column="0" Text="服务 ID *" Style="{StaticResource AppFieldLabelStyle}" />
                   <TextBox Grid.Column="1" Text="{Binding Draft.Id, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <TextBlock Margin="140,4,0,0"
@@ -99,7 +91,7 @@
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="显示名称 *" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBlock Grid.Column="0" Text="显示名称 *" Style="{StaticResource AppFieldLabelStyle}" />
                   <TextBox Grid.Column="1" Text="{Binding Draft.DisplayName, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <TextBlock Margin="140,4,0,0"
@@ -112,7 +104,7 @@
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="描述" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBlock Grid.Column="0" Text="描述" Style="{StaticResource AppFieldLabelStyle}" />
                   <TextBox Grid.Column="1"
                            Text="{Binding Draft.Description, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
@@ -122,7 +114,7 @@
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="启动类型" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBlock Grid.Column="0" Text="启动类型" Style="{StaticResource AppFieldLabelStyle}" />
                   <ComboBox Grid.Column="1"
                             DisplayMemberPath="Display"
                             SelectedValuePath="Value"
@@ -145,7 +137,7 @@
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="延迟启动" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBlock Grid.Column="0" Text="延迟启动" Style="{StaticResource AppFieldLabelStyle}" />
                   <CheckBox Grid.Column="1"
                             Content="启用延迟自动启动"
                             IsChecked="{Binding Draft.DelayedAutoStart}" />
@@ -156,7 +148,7 @@
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="自动刷新" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBlock Grid.Column="0" Text="自动刷新" Style="{StaticResource AppFieldLabelStyle}" />
                   <CheckBox Grid.Column="1"
                             Content="启用自动刷新配置（autoRefresh）"
                             IsChecked="{Binding Draft.AutoRefresh}" />
@@ -167,7 +159,7 @@
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="隐藏窗口" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBlock Grid.Column="0" Text="隐藏窗口" Style="{StaticResource AppFieldLabelStyle}" />
                   <CheckBox Grid.Column="1"
                             Content="隐藏程序窗口（hidewindow）"
                             IsChecked="{Binding Draft.HideWindow}" />
@@ -178,7 +170,7 @@
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="停止超时 *" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBlock Grid.Column="0" Text="停止超时 *" Style="{StaticResource AppFieldLabelStyle}" />
                   <TextBox Grid.Column="1" Text="{Binding Draft.StopTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <TextBlock Margin="140,4,0,0"
@@ -191,7 +183,7 @@
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="安装后启动" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBlock Grid.Column="0" Text="安装后启动" Style="{StaticResource AppFieldLabelStyle}" />
                   <CheckBox Grid.Column="1"
                             Content="安装后立即启动服务"
                             IsChecked="{Binding Draft.StartAfterInstall}" />
@@ -214,7 +206,7 @@
                 <ColumnDefinition Width="140" />
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="日志方案" Style="{StaticResource FieldLabelStyle}" />
+              <TextBlock Grid.Column="0" Text="日志方案" Style="{StaticResource AppFieldLabelStyle}" />
               <ComboBox Grid.Column="1"
                           DisplayMemberPath="Display"
                           SelectedValuePath="Value"
@@ -238,7 +230,7 @@
                   <ColumnDefinition Width="140" />
                   <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="WinSW 模式" Style="{StaticResource FieldLabelStyle}" />
+                <TextBlock Grid.Column="0" Text="WinSW 模式" Style="{StaticResource AppFieldLabelStyle}" />
                 <ComboBox Grid.Column="1"
                             DisplayMemberPath="Display"
                             SelectedValuePath="Value"
@@ -278,7 +270,7 @@
                   <ColumnDefinition Width="140" />
                   <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="大小阈值(KB)" Style="{StaticResource FieldLabelStyle}" />
+                <TextBlock Grid.Column="0" Text="大小阈值(KB)" Style="{StaticResource AppFieldLabelStyle}" />
                 <TextBox Grid.Column="1" Text="{Binding Draft.LogSizeThresholdKb, UpdateSourceTrigger=PropertyChanged}" />
               </Grid>
               <Grid Margin="0,10,0,0">
@@ -314,7 +306,7 @@
                   <ColumnDefinition Width="140" />
                   <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="保留文件数" Style="{StaticResource FieldLabelStyle}" />
+                <TextBlock Grid.Column="0" Text="保留文件数" Style="{StaticResource AppFieldLabelStyle}" />
                 <TextBox Grid.Column="1" Text="{Binding Draft.LogKeepFiles, UpdateSourceTrigger=PropertyChanged}" />
               </Grid>
             </StackPanel>
@@ -337,7 +329,7 @@
                   <ColumnDefinition Width="8" />
                   <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="日志目录" Style="{StaticResource FieldLabelStyle}" />
+                <TextBlock Grid.Column="0" Text="日志目录" Style="{StaticResource AppFieldLabelStyle}" />
                 <TextBox Grid.Column="1" Text="{Binding Draft.ExternalLogDirectoryPath, UpdateSourceTrigger=PropertyChanged}" />
                 <Button Grid.Column="3"
                           Style="{StaticResource MaterialDesignFlatButton}"
@@ -349,19 +341,16 @@
                   <ColumnDefinition Width="140" />
                   <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="扩展名匹配" Style="{StaticResource FieldLabelStyle}" />
+                <TextBlock Grid.Column="0" Text="扩展名匹配" Style="{StaticResource AppFieldLabelStyle}" />
                 <TextBox Grid.Column="1"
                            Text="{Binding Draft.ExternalLogFileExtensions, UpdateSourceTrigger=PropertyChanged}"
                            materialDesign:HintAssist.Hint="{x:Static vm:ServiceConfigUiOptions.ExternalLogFileExtensionsPlaceholder}" />
               </Grid>
               <TextBlock Margin="140,4,0,0"
-                           Opacity="0.9"
-                           FontSize="12"
-                           TextWrapping="Wrap"
+                           Style="{StaticResource AppTextCaptionStyle}"
                            Text="{x:Static vm:ServiceConfigUiOptions.ExternalLogFileExtensionsFormatDescription}" />
               <TextBlock Margin="140,6,0,0"
-                           Opacity="0.9"
-                           TextWrapping="Wrap"
+                           Style="{StaticResource AppTextSecondaryStyle}"
                            Text="提示：将按扩展名过滤日志目录并自动读取最新改动文件；WinSW 日志模式会设为 none。实时跟踪与最大条数请在「服务控制台」中调整。" />
             </StackPanel>
           </StackPanel>
@@ -381,7 +370,7 @@
                 <ColumnDefinition Width="140" />
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="失败动作" Style="{StaticResource FieldLabelStyle}" />
+              <TextBlock Grid.Column="0" Text="失败动作" Style="{StaticResource AppFieldLabelStyle}" />
               <ComboBox Grid.Column="1"
                           DisplayMemberPath="Display"
                           SelectedValuePath="Value"
@@ -404,7 +393,7 @@
                 <ColumnDefinition Width="140" />
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="重启间隔(秒)" Style="{StaticResource FieldLabelStyle}" />
+              <TextBlock Grid.Column="0" Text="重启间隔(秒)" Style="{StaticResource AppFieldLabelStyle}" />
               <TextBox Grid.Column="1"
                          Text="{Binding Draft.CrashRestartDelaySeconds, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
@@ -424,7 +413,7 @@
                 <ColumnDefinition Width="140" />
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="重置失败计数" Style="{StaticResource FieldLabelStyle}" />
+              <TextBlock Grid.Column="0" Text="重置失败计数" Style="{StaticResource AppFieldLabelStyle}" />
               <Grid Grid.Column="1">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="*" />
@@ -452,8 +441,7 @@
               <ColumnDefinition Width="0.1*" />
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="1" Margin="0,24">
-            <TextBlock Opacity="0.9"
-                         TextWrapping="Wrap"
+            <TextBlock Style="{StaticResource AppTextSecondaryStyle}"
                          Text="每行一个服务名，或用逗号/分号分隔。会生成多个 &lt;depend&gt; 元素。" />
             <TextBox Margin="0,10,0,0"
                        MinHeight="160"

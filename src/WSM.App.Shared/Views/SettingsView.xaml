@@ -43,8 +43,7 @@
                                    Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
           <TextBlock Text="{Binding AdminStatusText}"
                      VerticalAlignment="Center"
-                     TextWrapping="Wrap"
-                     Opacity="0.8" />
+                     Style="{StaticResource AppTextSecondaryStyle}" />
         </StackPanel>
         <Button Margin="0,12,0,0"
                 Style="{StaticResource MaterialDesignFlatButton}"
@@ -53,8 +52,7 @@
                 Content="以管理员身份重启"
                 Visibility="{Binding IsRunningAsAdministrator, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
         <TextBlock Margin="0,8,0,0"
-                   Opacity="0.8"
-                   TextWrapping="Wrap"
+                   Style="{StaticResource AppTextSecondaryStyle}"
                    Text="安装、卸载、启动 Windows 服务均需管理员权限。直接运行 WSM.exe 时会自动弹出 UAC 提权。" />
       </StackPanel>
     </materialDesign:Card>
@@ -64,7 +62,7 @@
         <TextBlock Text="窗口行为"
                    Style="{StaticResource MaterialDesignSubtitle2TextBlock}" />
         <TextBlock Margin="0,8,0,0"
-                   Opacity="0.9"
+                   Style="{StaticResource AppTextFieldLabelStyle}"
                    Text="关闭主窗口时" />
         <StackPanel Margin="0,6,0,0">
           <RadioButton GroupName="CloseWindowBehavior"
@@ -76,8 +74,7 @@
                        IsChecked="{Binding ExitOnClose, Mode=TwoWay}" />
         </StackPanel>
         <TextBlock Margin="0,10,0,0"
-                   Opacity="0.8"
-                   TextWrapping="Wrap"
+                   Style="{StaticResource AppTextSecondaryStyle}"
                    Text="选择「退出程序」后，点击窗口关闭按钮将直接结束 WSM；最小化窗口仍会进入托盘。" />
       </StackPanel>
     </materialDesign:Card>
@@ -98,8 +95,7 @@
                   Content="应用目录" />
         </StackPanel>
         <TextBlock Margin="0,10,0,0"
-                   Opacity="0.8"
-                   TextWrapping="Wrap"
+                   Style="{StaticResource AppTextSecondaryStyle}"
                    Text="应用新目录前会先停止全部托管服务。建议应用后重启 WSM。" />
       </StackPanel>
     </materialDesign:Card>
@@ -109,7 +105,7 @@
         <TextBlock Text="添加服务默认命名规则" Style="{StaticResource MaterialDesignSubtitle2TextBlock}" />
 
         <TextBlock Margin="0,8,0,0"
-                   Opacity="0.9"
+                   Style="{StaticResource AppTextFieldLabelStyle}"
                    Text="服务 ID 规则" />
         <ComboBox Margin="0,6,0,0"
                   DisplayMemberPath="Display"
@@ -122,7 +118,7 @@
                  materialDesign:HintAssist.Hint="服务 ID 前缀（仅“前缀 + 程序名称”生效）" />
 
         <TextBlock Margin="0,10,0,0"
-                   Opacity="0.9"
+                   Style="{StaticResource AppTextFieldLabelStyle}"
                    Text="服务名称规则" />
         <ComboBox Margin="0,6,0,0"
                   DisplayMemberPath="Display"
@@ -135,7 +131,7 @@
                  materialDesign:HintAssist.Hint="服务名称前缀（仅“前缀 + 程序名称”生效）" />
 
         <TextBlock Margin="0,10,0,0"
-                   Opacity="0.9"
+                   Style="{StaticResource AppTextFieldLabelStyle}"
                    Text="描述规则" />
         <ComboBox Margin="0,6,0,0"
                   DisplayMemberPath="Display"
@@ -160,19 +156,16 @@
         <TextBlock Text="关于 WSM"
                    Style="{StaticResource MaterialDesignSubtitle2TextBlock}" />
         <TextBlock Margin="0,10,0,0"
-                   Opacity="0.9"
+                   Style="{StaticResource AppTextSecondaryStyle}"
                    Text="{Binding AppVersion, StringFormat=版本：{0}}" />
         <TextBlock Margin="0,6,0,0"
-                   Opacity="0.9"
+                   Style="{StaticResource AppTextSecondaryStyle}"
                    Text="{Binding AppBuildDate, StringFormat=构建日期：{0}}" />
         <TextBlock Margin="0,6,0,0"
-                   Opacity="0.9"
-                   FontFamily="{StaticResource AppLogFontFamily}"
-                   FontSize="12"
-                   Text="{Binding AppFingerprint, StringFormat=指纹：{0}}"
-                   TextWrapping="Wrap" />
+                   Style="{StaticResource AppTextSecondaryStyle}"
+                   Text="{Binding AppFingerprint, StringFormat=指纹：{0}}" />
         <TextBlock Margin="0,12,0,0"
-                   Opacity="0.9"
+                   Style="{StaticResource AppTextSecondaryStyle}"
                    Text="{Binding CopyrightText}" />
       </StackPanel>
     </materialDesign:Card>

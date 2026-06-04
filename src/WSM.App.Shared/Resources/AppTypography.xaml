@@ -1,0 +1,116 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- 全局：所有页面默认使用普惠体 Regular -->
+  <Style TargetType="{x:Type Window}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+    <Setter Property="TextElement.FontFamily" Value="{StaticResource AppFontFamily}" />
+    <Setter Property="TextElement.FontSize" Value="14" />
+    <Setter Property="TextElement.FontWeight" Value="Normal" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource MaterialDesignBody}" />
+  </Style>
+
+  <Style TargetType="{x:Type UserControl}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+    <Setter Property="TextElement.FontFamily" Value="{StaticResource AppFontFamily}" />
+  </Style>
+
+  <Style TargetType="{x:Type TextBlock}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+  </Style>
+
+  <Style TargetType="{x:Type Control}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+  </Style>
+
+  <!-- 覆盖 Material Design 排版（避免回退到 Roboto） -->
+  <Style x:Key="MaterialDesignTitleLargeTextBlock" TargetType="{x:Type TextBlock}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontHeavy}" />
+    <Setter Property="FontSize" Value="22" />
+    <Setter Property="LineHeight" Value="28" />
+  </Style>
+
+  <Style x:Key="MaterialDesignHeadline6TextBlock" TargetType="{x:Type TextBlock}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontBold}" />
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="LineHeight" Value="26" />
+  </Style>
+
+  <Style x:Key="MaterialDesignSubtitle1TextBlock" TargetType="{x:Type TextBlock}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontBold}" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="LineHeight" Value="22" />
+  </Style>
+
+  <Style x:Key="MaterialDesignSubtitle2TextBlock" TargetType="{x:Type TextBlock}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontExtraBold}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="LineHeight" Value="20" />
+  </Style>
+
+  <Style x:Key="MaterialDesignBody2TextBlock" TargetType="{x:Type TextBlock}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="LineHeight" Value="20" />
+  </Style>
+
+  <Style x:Key="AppConsoleLogTextStyle" TargetType="{x:Type TextBox}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+    <Setter Property="FontSize" Value="13" />
+  </Style>
+
+  <!-- 语义化文字样式（用字重区分层次，不用 Opacity 模拟粗细） -->
+  <Style x:Key="AppTextSecondaryStyle" TargetType="{x:Type TextBlock}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontLight}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <Style x:Key="AppTextCaptionStyle" TargetType="{x:Type TextBlock}" BasedOn="{StaticResource AppTextSecondaryStyle}">
+    <Setter Property="FontSize" Value="14" />
+  </Style>
+
+  <Style x:Key="AppTextFieldLabelStyle" TargetType="{x:Type TextBlock}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontRegular}" />
+  </Style>
+
+  <Style x:Key="AppTextMetaLabelStyle" TargetType="{x:Type TextBlock}" BasedOn="{StaticResource MaterialDesignBody2TextBlock}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontLight}" />
+  </Style>
+
+  <Style x:Key="AppFieldLabelStyle" TargetType="{x:Type TextBlock}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontRegular}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,0,12,0" />
+  </Style>
+
+  <Style x:Key="AppStatusBarLabelStyle" TargetType="{x:Type TextBlock}">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="LineHeight" Value="20" />
+    <Setter Property="FontFamily" Value="{StaticResource AppFontLight}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,0,8,0" />
+  </Style>
+
+  <Style x:Key="AppStatusBarValueStyle" TargetType="{x:Type TextBlock}">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="LineHeight" Value="20" />
+    <Setter Property="FontFamily" Value="{StaticResource AppFontRegular}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- DataGrid 表头：普惠体 Medium（MD 5 无 MaterialDesignDataGridColumnHeader 资源键，独立定义） -->
+  <Style x:Key="AppDataGridColumnHeaderStyle" TargetType="{x:Type DataGridColumnHeader}">
+    <Setter Property="FontFamily" Value="{StaticResource AppFontMedium}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+    <Setter Property="Background" Value="{DynamicResource MaterialDesignPaper}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesignDivider}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="12,8,12,8" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
+</ResourceDictionary>
