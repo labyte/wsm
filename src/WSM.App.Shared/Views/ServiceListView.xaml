@@ -23,7 +23,7 @@
     </Style>
 
     <Style x:Key="MoreMenuIconStyle" TargetType="materialDesign:PackIcon">
-      <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+      <Setter Property="Foreground" Value="{DynamicResource ServiceActionSecondaryForeground}" />
       <Style.Triggers>
         <Trigger Property="IsMouseOver" Value="True">
           <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
@@ -163,7 +163,9 @@
           <DataGridTemplateColumn Header="状态" Width="0.5*" MinWidth="140">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Stretch"  Margin="0">
+                <StackPanel Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Margin="0">
                   <materialDesign:PackIcon
                                            Style="{StaticResource ServiceStatusIconStyle}"
                                            Margin="-2,0,4,0"
@@ -209,13 +211,13 @@
                   <Button Style="{StaticResource ServiceActionIconButtonStyle}"
                           ToolTip="一键启动所选服务"
                           Command="{Binding DataContext.StartSelectedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                    <materialDesign:PackIcon Kind="Play" Foreground="#2E7D32" Width="22" Height="22" />
+                    <materialDesign:PackIcon Kind="Play" Foreground="{DynamicResource ServiceStatusRunningForeground}" Width="22" Height="22" />
                   </Button>
                   <Button Style="{StaticResource ServiceActionIconButtonStyle}"
                           Margin="8,0,0,0"
                           ToolTip="一键停止所选服务"
                           Command="{Binding DataContext.StopSelectedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                    <materialDesign:PackIcon Kind="Stop" Foreground="#B71C1C" Width="22" Height="22" />
+                    <materialDesign:PackIcon Kind="Stop" Foreground="{DynamicResource ServiceStatusStoppedForeground}" Width="22" Height="22" />
                   </Button>
                   <materialDesign:PopupBox PlacementMode="BottomAndAlignRightEdges"
                                            StaysOpen="False"
@@ -226,7 +228,7 @@
                               ToolTip="一键卸载所选服务"
                               Command="{Binding DataContext.OpenBatchUninstallConfirmCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                         <materialDesign:PackIcon Kind="TrashCanOutline"
-                                                 Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                                                 Foreground="{DynamicResource ServiceActionDangerForeground}"
                                                  Width="22"
                                                  Height="22" />
                       </Button>
@@ -250,7 +252,7 @@
                                   Content="取消" />
                           <Button Margin="8,0,0,0"
                                   Style="{StaticResource MaterialDesignFlatButton}"
-                                  Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                                  Foreground="{DynamicResource ServiceActionDangerForeground}"
                                   Command="{Binding DataContext.UninstallSelectedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                   Content="确认卸载" />
                         </StackPanel>
@@ -270,7 +272,7 @@
                           CommandParameter="{Binding}"
                           Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                     <materialDesign:PackIcon Kind="PlayCircleOutline"
-                                             Foreground="#2E7D32"
+                                             Foreground="{DynamicResource ServiceStatusRunningForeground}"
                                              Width="22"
                                              Height="22" />
                   </Button>
@@ -281,7 +283,7 @@
                           CommandParameter="{Binding}"
                           Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <materialDesign:PackIcon Kind="StopCircleOutline"
-                                             Foreground="#B71C1C"
+                                             Foreground="{DynamicResource ServiceStatusStoppedForeground}"
                                              Width="22"
                                              Height="22" />
                   </Button>
@@ -291,7 +293,7 @@
                           Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                           CommandParameter="{Binding}">
                     <materialDesign:PackIcon Kind="Restart"
-                                             Foreground="{DynamicResource MaterialDesignBody}"
+                                             Foreground="{DynamicResource ServiceActionSecondaryForeground}"
                                              Width="22"
                                              Height="22" />
                   </Button>
@@ -310,7 +312,7 @@
                     <StackPanel MinWidth="160">
                       <Button Style="{StaticResource MaterialDesignFlatButton}"
                               HorizontalContentAlignment="Left"
-                              Foreground="#2E7D32"
+                              Foreground="{DynamicResource ServiceStatusRunningForeground}"
                               Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                               CommandParameter="{Binding}"
                               Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
@@ -326,7 +328,7 @@
                       </Button>
                       <Button Style="{StaticResource MaterialDesignFlatButton}"
                               HorizontalContentAlignment="Left"
-                              Foreground="#B71C1C"
+                              Foreground="{DynamicResource ServiceStatusStoppedForeground}"
                               Command="{Binding DataContext.StopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                               CommandParameter="{Binding}"
                               Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -346,7 +348,7 @@
                               CommandParameter="{Binding}">
                         <StackPanel Orientation="Horizontal">
                           <materialDesign:PackIcon Kind="Restart"
-                                                   Foreground="{DynamicResource MaterialDesignBody}"
+                                                   Foreground="{DynamicResource ServiceActionSecondaryForeground}"
                                                    Width="18"
                                                    Height="18"
                                                    Margin="0,0,8,0" />
@@ -370,7 +372,7 @@
 
                       <Button Style="{StaticResource MaterialDesignFlatButton}"
                       HorizontalContentAlignment="Left"
-                      Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                      Foreground="{DynamicResource ServiceActionDangerForeground}"
                       Command="{Binding DataContext.OpenUninstallConfirmCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                       CommandParameter="{Binding}">
                         <StackPanel Orientation="Horizontal">
@@ -437,7 +439,7 @@
                           Content="取消" />
                           <Button Margin="8,0,0,0"
                           Style="{StaticResource MaterialDesignFlatButton}"
-                          Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                          Foreground="{DynamicResource ServiceActionDangerForeground}"
                           Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                           CommandParameter="{Binding}"
                           Content="确认卸载" />

@@ -19,53 +19,60 @@
   <converters:StepIsNotLastVisibilityConverter x:Key="StepIsNotLastVisibilityConverter" />
   <converters:StepCanGoBackConverter x:Key="StepCanGoBackConverter" />
 
+  <SolidColorBrush x:Key="ServiceStatusRunningForeground" Color="#2E7D32" />
+  <SolidColorBrush x:Key="ServiceStatusStoppedForeground" Color="#B71C1C" />
+  <SolidColorBrush x:Key="ServiceStatusPendingForeground" Color="#EF6C00" />
+  <SolidColorBrush x:Key="ServiceStatusNeutralForeground" Color="#616161" />
+  <SolidColorBrush x:Key="ServiceActionDangerForeground" Color="#C62828" />
+  <SolidColorBrush x:Key="ServiceActionSecondaryForeground" Color="#424242" />
+
   <Style x:Key="ServiceStatusIconStyle" TargetType="materialDesign:PackIcon">
     <Setter Property="Kind" Value="AlertCircleOutline" />
-    <Setter Property="Foreground" Value="#616161" />
+    <Setter Property="Foreground" Value="{DynamicResource ServiceStatusNeutralForeground}" />
     <Setter Property="Width" Value="16" />
     <Setter Property="Height" Value="16" />
     <Style.Triggers>
       <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.Running}">
         <Setter Property="Kind" Value="PlayCircle" />
-        <Setter Property="Foreground" Value="#2E7D32" />
+        <Setter Property="Foreground" Value="{DynamicResource ServiceStatusRunningForeground}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.Stopped}">
         <Setter Property="Kind" Value="StopCircleOutline" />
-        <Setter Property="Foreground" Value="#B71C1C" />
+        <Setter Property="Foreground" Value="{DynamicResource ServiceStatusStoppedForeground}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.StartPending}">
         <Setter Property="Kind" Value="ProgressClock" />
-        <Setter Property="Foreground" Value="#EF6C00" />
+        <Setter Property="Foreground" Value="{DynamicResource ServiceStatusPendingForeground}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.StopPending}">
         <Setter Property="Kind" Value="ProgressClock" />
-        <Setter Property="Foreground" Value="#EF6C00" />
+        <Setter Property="Foreground" Value="{DynamicResource ServiceStatusPendingForeground}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.NotInstalled}">
         <Setter Property="Kind" Value="AlertCircleOutline" />
-        <Setter Property="Foreground" Value="#616161" />
+        <Setter Property="Foreground" Value="{DynamicResource ServiceStatusNeutralForeground}" />
       </DataTrigger>
     </Style.Triggers>
   </Style>
 
   <Style x:Key="ServiceStatusTextStyle" TargetType="TextBlock">
-    <Setter Property="Foreground" Value="#616161" />
+    <Setter Property="Foreground" Value="{DynamicResource ServiceStatusNeutralForeground}" />
     <Setter Property="Margin" Value="0 1.2 0 0" />
     <Style.Triggers>
       <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.Running}">
-        <Setter Property="Foreground" Value="#2E7D32" />
+        <Setter Property="Foreground" Value="{DynamicResource ServiceStatusRunningForeground}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.Stopped}">
-        <Setter Property="Foreground" Value="#B71C1C" />
+        <Setter Property="Foreground" Value="{DynamicResource ServiceStatusStoppedForeground}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.StartPending}">
-        <Setter Property="Foreground" Value="#EF6C00" />
+        <Setter Property="Foreground" Value="{DynamicResource ServiceStatusPendingForeground}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.StopPending}">
-        <Setter Property="Foreground" Value="#EF6C00" />
+        <Setter Property="Foreground" Value="{DynamicResource ServiceStatusPendingForeground}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ServiceRuntimeStatus.NotInstalled}">
-        <Setter Property="Foreground" Value="#616161" />
+        <Setter Property="Foreground" Value="{DynamicResource ServiceStatusNeutralForeground}" />
       </DataTrigger>
     </Style.Triggers>
   </Style>

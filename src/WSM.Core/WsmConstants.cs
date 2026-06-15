@@ -6,7 +6,7 @@ namespace WSM.Core;
 public static class WsmConstants
 {
     public const string AppName = "WSM";
-    public const string AppDisplayName = "Windows Service Manager";
+    public const string AppDisplayName = "Windows 后台服务管理器";
     public const string DataFolderName = "WSM";
 
     /// <summary>

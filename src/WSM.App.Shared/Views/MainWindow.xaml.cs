@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using MaterialDesignThemes.Wpf;
+using WSM.App.Shared.Resources;
 using WSM.App.Shared.Services;
 using WSM.App.Shared.ViewModels;
 
@@ -36,7 +38,9 @@ public partial class MainWindow : Window
             {
                 if (e.NewTheme != null)
                 {
-                    DarkModeToggleButton.IsChecked = e.NewTheme.GetBaseTheme() == BaseTheme.Dark;
+                    var isDarkTheme = e.NewTheme.GetBaseTheme() == BaseTheme.Dark;
+                    DarkModeToggleButton.IsChecked = isDarkTheme;
+                    UpdateThemeBranding(isDarkTheme);
                 }
             };
         }
@@ -48,8 +52,8 @@ public partial class MainWindow : Window
         }
         else
         {
-            ApplyInitialLightThemeIfNeeded();
             SyncThemeToggleState();
+            UpdateThemeBranding(DarkModeToggleButton.IsChecked == true);
         }
     }
 
@@ -66,33 +70,26 @@ public partial class MainWindow : Window
         DarkModeToggleButton.IsChecked = theme.GetBaseTheme() == BaseTheme.Dark;
     }
 
+    private void UpdateThemeBranding(bool isDarkTheme)
+    {
+        AppLogoImage.Source = new BitmapImage(AppLogoBranding.GetHeaderLogoUri(isDarkTheme));
+        AppTitleTextBlock.Foreground = AppTitleBranding.GetTitleForeground(isDarkTheme);
+        AppServiceStatusBranding.Apply(isDarkTheme);
+    }
+
     private void ApplyTheme(bool isDarkTheme, bool persist)
     {
-        if (isDarkTheme)
-        {
-            AppThemeCustomizer.ClearOverrides();
-        }
-
         var theme = _paletteHelper.GetTheme();
         theme.SetBaseTheme(isDarkTheme ? BaseTheme.Dark : BaseTheme.Light);
         _paletteHelper.SetTheme(theme);
 
-        if (!isDarkTheme)
-        {
-            AppThemeCustomizer.ApplyIfLight(_paletteHelper);
-        }
-
         DarkModeToggleButton.IsChecked = isDarkTheme;
+        UpdateThemeBranding(isDarkTheme);
 
         if (persist)
         {
             _themePreferenceStore.SaveIsDarkTheme(isDarkTheme);
         }
-    }
-
-    private void ApplyInitialLightThemeIfNeeded()
-    {
-        AppThemeCustomizer.ApplyIfLight(_paletteHelper);
     }
 
     private void Window_OnLoaded(object sender, RoutedEventArgs e)
